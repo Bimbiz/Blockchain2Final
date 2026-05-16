@@ -293,6 +293,8 @@ contract AMM is
     // Yul assembly - gas-optimised k-invariant check
     /// @notice Verify that k does not decrease after swap (Yul version)
     /// @dev Benchmarked vs pure-Solidity equivalent in test/AMM.yul.t.sol
+    // Yul assembly - gas-optimised k-invariant check
+    /// @notice Verify that k does not decrease after swap (Yul version with overflow guards)
     function _verifyKInvariant(
         uint256 newReserveIn,
         uint256 newReserveOut,
@@ -300,16 +302,28 @@ contract AMM is
         uint256 oldReserveOut
     ) internal pure {
         assembly {
-            // newK = newReserveIn * newReserveOut
-            // oldK = oldReserveIn * oldReserveOut
-            // require(newK >= oldK)  — fee means newK is always >= oldK
-            let newK := mul(newReserveIn, newReserveOut)
             let oldK := mul(oldReserveIn, oldReserveOut)
-            // Overflow guard: if newK < newReserveIn when newReserveOut>1, overflow occurred
+
+            if and(
+                iszero(iszero(oldReserveIn)),
+                iszero(eq(div(oldK, oldReserveIn), oldReserveOut))
+            ) {
+                mstore(0x00, shl(224, 0x8bdf6e9d))
+                revert(0x00, 0x04)
+            }
+
+            let newK := mul(newReserveIn, newReserveOut)
+            if and(
+                iszero(iszero(newReserveIn)),
+                iszero(eq(div(newK, newReserveIn), newReserveOut))
+            ) {
+                mstore(0x00, shl(224, 0x8bdf6e9d))
+                revert(0x00, 0x04)
+            }
+
             if lt(newK, oldK) {
-                // Store selector of KInvariantViolated() = keccak256 first 4 bytes
-                mstore(0x00, 0x8bdf6e9d)
-                revert(0x1c, 0x04)
+                mstore(0x00, shl(224, 0x8bdf6e9d))
+                revert(0x00, 0x04)
             }
         }
     }
