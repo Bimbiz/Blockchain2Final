@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {StdInvariant} from "forge-std/StdInvariant.sol";
-import {
-    ERC1967Proxy
-} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {AMM} from "../src/AMM.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
+import { Test } from "forge-std/Test.sol";
+import { StdInvariant } from "forge-std/StdInvariant.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { AMM } from "../src/AMM.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
 
 /// @notice Handler contract that Foundry will call randomly
 contract AMMHandler is Test {
@@ -37,11 +35,7 @@ contract AMMHandler is Test {
         }
     }
 
-    function addLiquidity(
-        uint256 actorSeed,
-        uint256 amountA,
-        uint256 amountB
-    ) external {
+    function addLiquidity(uint256 actorSeed, uint256 amountA, uint256 amountB) external {
         address actor = actors[actorSeed % actors.length];
 
         (uint256 rA, uint256 rB) = amm.getReserves();
@@ -56,13 +50,10 @@ contract AMMHandler is Test {
             amountB = bound(amountB, 1e18, 100_000e18);
         }
 
-        if (
-            tokenA.balanceOf(actor) < amountA ||
-            tokenB.balanceOf(actor) < amountB
-        ) return;
+        if (tokenA.balanceOf(actor) < amountA || tokenB.balanceOf(actor) < amountB) return;
 
         vm.prank(actor);
-        (, , uint256 lp) = amm.addLiquidity(amountA, amountB, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(amountA, amountB, 0, 0);
 
         ghost_totalLPMinted += lp;
     }
@@ -141,10 +132,7 @@ contract InvariantTests is StdInvariant, Test {
         govToken = new GovernanceToken(owner);
 
         AMM impl = new AMM();
-        bytes memory init = abi.encodeCall(
-            AMM.initialize,
-            (address(tokenA), address(tokenB), owner)
-        );
+        bytes memory init = abi.encodeCall(AMM.initialize, (address(tokenA), address(tokenB), owner));
         amm = AMM(address(new ERC1967Proxy(address(impl), init)));
 
         // Seed initial liquidity
@@ -170,11 +158,7 @@ contract InvariantTests is StdInvariant, Test {
         (uint256 rA, uint256 rB) = amm.getReserves();
         uint256 currentK = rA * rB;
         uint256 totalSupply = amm.totalSupply();
-        assertGe(
-            currentK,
-            (totalSupply * totalSupply) / 1e18,
-            "K decreased relative to LP supply"
-        );
+        assertGe(currentK, (totalSupply * totalSupply) / 1e18, "K decreased relative to LP supply");
     }
 
     /// @notice Invariant 2: AMM contract holds exactly reserveA of tokenA and reserveB of tokenB
@@ -186,9 +170,7 @@ contract InvariantTests is StdInvariant, Test {
 
     /// @notice Invariant 3: LP total supply = minted - burned (ghost variable check)
     function invariant_LPSupplyConservation() public view {
-        uint256 baseSupply = ownerLP +
-            amm.MINIMUM_LIQUIDITY() +
-            handler.ghost_totalLPMinted();
+        uint256 baseSupply = ownerLP + amm.MINIMUM_LIQUIDITY() + handler.ghost_totalLPMinted();
         uint256 expectedSupply = baseSupply - handler.ghost_totalLPBurned();
 
         assertEq(amm.totalSupply(), expectedSupply, "LP Supply mismatch");

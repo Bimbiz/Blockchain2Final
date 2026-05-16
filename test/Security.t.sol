@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {
-    ERC1967Proxy
-} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AMM} from "../src/AMM.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AMM } from "../src/AMM.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
 
 /// @title SecurityTests
 /// @notice Case Study 1: Reentrancy — reproduced + fixed
@@ -56,17 +54,13 @@ contract ReentrancyAttacker {
 contract MaliciousToken is MockERC20 {
     address public callback;
 
-    constructor() MockERC20("Malicious", "MAL") {}
+    constructor() MockERC20("Malicious", "MAL") { }
 
     function setCallback(address _cb) external {
         callback = _cb;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public override returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         bool result = super.transferFrom(from, to, amount);
         if (callback != address(0)) {
             ReentrancyAttacker(callback).onERC20Transfer();
@@ -105,10 +99,7 @@ contract SecurityTests is Test {
         govToken = new GovernanceToken(owner);
 
         AMM impl = new AMM();
-        bytes memory init = abi.encodeCall(
-            AMM.initialize,
-            (address(malToken), address(tokenB), owner)
-        );
+        bytes memory init = abi.encodeCall(AMM.initialize, (address(malToken), address(tokenB), owner));
         amm = AMM(address(new ERC1967Proxy(address(impl), init)));
 
         // Seed pool with normal owner account (owner uses regular mock, not malicious)
@@ -139,10 +130,7 @@ contract SecurityTests is Test {
 
         // Deploy attacker
         malToken.mint(attacker, 10_000e18);
-        ReentrancyAttacker atkContract = new ReentrancyAttacker(
-            address(amm),
-            address(malToken)
-        );
+        ReentrancyAttacker atkContract = new ReentrancyAttacker(address(amm), address(malToken));
         malToken.setCallback(address(atkContract));
 
         malToken.mint(address(atkContract), 100_000e18);
@@ -154,9 +142,7 @@ contract SecurityTests is Test {
 
         // Verify: pool state is unchanged if attack fails
         // The attack contract would revert if reentrancy guard fires
-        console2.log(
-            "[SECURITY] Reentrancy guard: ACTIVE. Attack reverts as expected."
-        );
+        console2.log("[SECURITY] Reentrancy guard: ACTIVE. Attack reverts as expected.");
         assertTrue(true); // Guard is present in contract (verified by ReentrancyGuardUpgradeable import + nonReentrant modifier)
     }
 
@@ -181,23 +167,17 @@ contract SecurityTests is Test {
     // CASE STUDY 2: Access Control
 
     /// @notice BEFORE fix: Vulnerable contract has no access control
-    function test_Security_AccessControl_VulnerableContract_AnyoneCanMint()
-        public
-    {
+    function test_Security_AccessControl_VulnerableContract_AnyoneCanMint() public {
         VulnerableToken vuln = new VulnerableToken();
         // Anyone can mint — this is the vulnerability
         vm.prank(attacker);
         vuln.mint(attacker, 1_000_000_000e18); // attacker mints unlimited tokens
         assertEq(vuln.balances(attacker), 1_000_000_000e18); // EXPLOIT: succeeds
-        console2.log(
-            "[VULNERABILITY] No access control: attacker minted unlimited tokens"
-        );
+        console2.log("[VULNERABILITY] No access control: attacker minted unlimited tokens");
     }
 
     /// @notice AFTER fix: GovernanceToken uses AccessControl — only MINTER_ROLE can mint
-    function test_Security_AccessControl_Fixed_UnauthorizedMintReverts()
-        public
-    {
+    function test_Security_AccessControl_Fixed_UnauthorizedMintReverts() public {
         vm.prank(attacker);
         vm.expectRevert(); // AccessControl: missing role
         govToken.mint(attacker, 1_000_000e18);

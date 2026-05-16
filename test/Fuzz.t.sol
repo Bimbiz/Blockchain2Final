@@ -1,15 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {
-    ERC1967Proxy
-} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {AMM} from "../src/AMM.sol";
-import {YieldVault} from "../src/YieldVault.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
-import {MockAggregator} from "../src/mocks/MockAggregator.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
+import { Test } from "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { AMM } from "../src/AMM.sol";
+import { YieldVault } from "../src/YieldVault.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
+import { MockAggregator } from "../src/mocks/MockAggregator.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
 
 /// @title FuzzTests
 /// @notice Fuzz tests covering AMM swap, vault deposit/withdraw, and governance voting power.
@@ -36,20 +34,11 @@ contract FuzzTests is Test {
 
         // AMM
         AMM impl = new AMM();
-        bytes memory initData = abi.encodeCall(
-            AMM.initialize,
-            (address(tokenA), address(tokenB), owner)
-        );
+        bytes memory initData = abi.encodeCall(AMM.initialize, (address(tokenA), address(tokenB), owner));
         amm = AMM(address(new ERC1967Proxy(address(impl), initData)));
 
         // Vault (tokenA as underlying)
-        vault = new YieldVault(
-            tokenA,
-            owner,
-            address(feed),
-            3600,
-            uint256(1e8)
-        );
+        vault = new YieldVault(tokenA, owner, address(feed), 3600, uint256(1e8));
 
         // Seed pool
         tokenA.mint(owner, POOL_A * 10);
@@ -79,10 +68,7 @@ contract FuzzTests is Test {
     }
 
     /// @dev Fuzz 2: getAmountOut is monotone increasing in amountIn
-    function testFuzz_GetAmountOut_Monotone(
-        uint256 amountIn1,
-        uint256 amountIn2
-    ) public view {
+    function testFuzz_GetAmountOut_Monotone(uint256 amountIn1, uint256 amountIn2) public view {
         amountIn1 = bound(amountIn1, 1, POOL_A / 100);
         amountIn2 = bound(amountIn2, amountIn1, POOL_A / 100);
 
@@ -92,9 +78,7 @@ contract FuzzTests is Test {
     }
 
     /// @dev Fuzz 3: Fee always reduces output vs no-fee calculation
-    function testFuzz_Swap_FeeAlwaysReducesOutput(
-        uint256 amountIn
-    ) public view {
+    function testFuzz_Swap_FeeAlwaysReducesOutput(uint256 amountIn) public view {
         amountIn = bound(amountIn, 1e15, POOL_A / 10);
         uint256 feeOut = amm.getAmountOut(amountIn, POOL_A, POOL_B);
         uint256 noFeeOut = (amountIn * POOL_B) / (POOL_A + amountIn);
@@ -129,8 +113,8 @@ contract FuzzTests is Test {
         tokenB.approve(address(amm), amountB);
 
         uint256 balABefore = tokenA.balanceOf(alice);
-        (, , uint256 lp) = amm.addLiquidity(amountA, amountB, 0, 0);
-        (uint256 retA, ) = amm.removeLiquidity(lp, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(amountA, amountB, 0, 0);
+        (uint256 retA,) = amm.removeLiquidity(lp, 0, 0);
         vm.stopPrank();
 
         // Returned A is within 0.1% of deposited A (rounding / minimum liquidity)
@@ -157,10 +141,7 @@ contract FuzzTests is Test {
     }
 
     /// @dev Fuzz 7: shares are proportional to assets (linear)
-    function testFuzz_Vault_SharesProportional(
-        uint256 assets1,
-        uint256 assets2
-    ) public {
+    function testFuzz_Vault_SharesProportional(uint256 assets1, uint256 assets2) public {
         assets1 = bound(assets1, 1e18, 500_000e18);
         assets2 = bound(assets2, 1e18, 500_000e18);
 
@@ -197,9 +178,7 @@ contract FuzzTests is Test {
     // Governance Fuzz tests
 
     /// @dev Fuzz 9: voting power equals delegated balance at a block
-    function testFuzz_VotingPower_EqualsDelegatedBalance(
-        uint256 amount
-    ) public {
+    function testFuzz_VotingPower_EqualsDelegatedBalance(uint256 amount) public {
         amount = bound(amount, 1e18, 1_000_000e18);
         if (amount > govToken.MAX_SUPPLY() - govToken.totalSupply()) return;
 

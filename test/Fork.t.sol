@@ -1,19 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {AMM} from "../src/AMM.sol";
-import {YieldVault} from "../src/YieldVault.sol";
-import {IPriceFeed} from "../src/interfaces/IPriceFeed.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { AMM } from "../src/AMM.sol";
+import { YieldVault } from "../src/YieldVault.sol";
+import { IPriceFeed } from "../src/interfaces/IPriceFeed.sol";
 
 contract ForkTests is Test {
-    address constant CHAINLINK_ETH_USD =
-        0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
+    address constant CHAINLINK_ETH_USD = 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419;
     address constant USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
-    address constant UNISWAP_V2_ROUTER =
-        0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
+    address constant UNISWAP_V2_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant USDC_WHALE = 0x47ac0Fb4F2D84898e4D9E7b4DaB3C24507a6D503;
 
     uint256 mainnetFork;
@@ -25,13 +23,7 @@ contract ForkTests is Test {
 
     function test_Fork_Chainlink_ETH_USD_PriceFeed() public {
         IPriceFeed feed = IPriceFeed(CHAINLINK_ETH_USD);
-        (
-            uint80 roundId,
-            int256 price,
-            ,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        ) = feed.latestRoundData();
+        (uint80 roundId, int256 price,, uint256 updatedAt, uint80 answeredInRound) = feed.latestRoundData();
 
         assertGt(price, 0, "Price must be positive");
         assertLt(uint256(price), 1_000_000e8, "Price below 1M USD (sanity)");
@@ -54,17 +46,11 @@ contract ForkTests is Test {
 
     function test_Fork_USDC_DepositToVault_Success() public {
         IPriceFeed feed = IPriceFeed(CHAINLINK_ETH_USD);
-        (, , , uint256 updatedAt, ) = feed.latestRoundData();
+        (,,, uint256 updatedAt,) = feed.latestRoundData();
 
         vm.warp(updatedAt + 10);
 
-        YieldVault vault = new YieldVault(
-            IERC20(USDC),
-            makeAddr("vaultAdmin"),
-            CHAINLINK_ETH_USD,
-            7200,
-            1e8
-        );
+        YieldVault vault = new YieldVault(IERC20(USDC), makeAddr("vaultAdmin"), CHAINLINK_ETH_USD, 7200, 1e8);
 
         uint256 depositAmount = 10_000e6;
         vm.prank(USDC_WHALE);
@@ -79,15 +65,9 @@ contract ForkTests is Test {
 
     function test_Fork_USDC_DepositToVault_RevertIfStale() public {
         IPriceFeed feed = IPriceFeed(CHAINLINK_ETH_USD);
-        (, , , uint256 updatedAt, ) = feed.latestRoundData();
+        (,,, uint256 updatedAt,) = feed.latestRoundData();
 
-        YieldVault vault = new YieldVault(
-            IERC20(USDC),
-            makeAddr("vaultAdmin"),
-            CHAINLINK_ETH_USD,
-            7200,
-            1e8
-        );
+        YieldVault vault = new YieldVault(IERC20(USDC), makeAddr("vaultAdmin"), CHAINLINK_ETH_USD, 7200, 1e8);
 
         uint256 depositAmount = 10_000e6;
         vm.prank(USDC_WHALE);
@@ -108,14 +88,8 @@ contract ForkTests is Test {
         path[0] = WETH;
         path[1] = USDC;
 
-        bytes memory callData = abi.encodeWithSignature(
-            "getAmountsOut(uint256,address[])",
-            1e18,
-            path
-        );
-        (bool success, bytes memory result) = UNISWAP_V2_ROUTER.staticcall(
-            callData
-        );
+        bytes memory callData = abi.encodeWithSignature("getAmountsOut(uint256,address[])", 1e18, path);
+        (bool success, bytes memory result) = UNISWAP_V2_ROUTER.staticcall(callData);
         assertTrue(success, "getAmountsOut must succeed");
 
         uint256[] memory amounts = abi.decode(result, (uint256[]));
@@ -127,14 +101,8 @@ contract ForkTests is Test {
         path[0] = USDC;
         path[1] = WETH;
 
-        bytes memory callData = abi.encodeWithSignature(
-            "getAmountsOut(uint256,address[])",
-            1000e6,
-            path
-        );
-        (bool success, bytes memory result) = UNISWAP_V2_ROUTER.staticcall(
-            callData
-        );
+        bytes memory callData = abi.encodeWithSignature("getAmountsOut(uint256,address[])", 1000e6, path);
+        (bool success, bytes memory result) = UNISWAP_V2_ROUTER.staticcall(callData);
         assertTrue(success);
         uint256[] memory amounts = abi.decode(result, (uint256[]));
         uint256 uniWETHOut = amounts[1];
@@ -147,11 +115,7 @@ contract ForkTests is Test {
         deal(USDC, address(myAmm), reserveUSDC);
         deal(WETH, address(myAmm), reserveWETH);
 
-        uint256 ourWETHOut = myAmm.getAmountOut(
-            1000e6,
-            reserveUSDC,
-            reserveWETH
-        );
+        uint256 ourWETHOut = myAmm.getAmountOut(1000e6, reserveUSDC, reserveWETH);
 
         assertGt(ourWETHOut, 0, "Our AMM formula failed");
 
