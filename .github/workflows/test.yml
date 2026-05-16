@@ -15,12 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: 'recursive'
+          token: ${{ github.token }}
 
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly
+          version: stable
+
+      - name: Force update submodules
+        run: git submodule update --init --recursive
 
       - name: Run Foundry Tests
         run: forge test -vvv
