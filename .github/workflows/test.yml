@@ -48,18 +48,19 @@ jobs:
  
       - name: Enforce 90% line coverage
         run: |
-          COV=$(grep "^| Total" coverage.txt \
+          COV=$(grep "| Total" coverage.txt \
             | awk -F'|' '{print $2}' \
             | grep -oE '[0-9]+\.[0-9]+' \
             | head -1)
- 
+
+          echo "Parsed coverage: '$COV'"
+
           if [ -z "$COV" ]; then
-            echo "Could not parse coverage — raw output:"
+            echo "Raw coverage.txt:"
             cat coverage.txt
             exit 1
           fi
- 
-          echo "Line coverage: $COV%"
+
           awk -v c="$COV" 'BEGIN {
             if (c+0 < 90) { print "FAIL: " c "% < 90%"; exit 1 }
             print "OK: " c "% >= 90%"
