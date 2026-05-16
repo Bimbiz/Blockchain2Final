@@ -1,0 +1,206 @@
+Warning: optimizer settings and `viaIR` have been disabled for accurate coverage reports.
+If you encounter "stack too deep" errors, consider using `--ir-minimum` which enables `viaIR` with minimum optimization resolving most of the errors
+Compiling 95 files with Solc 0.8.24
+Solc 0.8.24 finished in 2.34s
+Compiler run successful with warnings:
+Warning (2072): Unused local variable.
+   --> test/Fuzz.t.sol:117:10:
+    |
+117 |         (uint256 retA,) = amm.removeLiquidity(lp, 0, 0);
+    |          ^^^^^^^^^^^^
+
+Warning (2018): Function state mutability can be restricted to view
+   --> test/AMM.t.sol:390:5:
+    |
+390 |     function test_GetReserves() public {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Fork.t.sol:24:5:
+   |
+24 |     function test_Fork_Chainlink_ETH_USD_PriceFeed() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to view
+  --> test/Fork.t.sol:83:5:
+   |
+83 |     function test_Fork_UniswapV2_RouterExists_AndGetAmountsOut() public {
+   |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Warning (2018): Function state mutability can be restricted to pure
+   --> test/Security.t.sol:224:5:
+    |
+224 |     function test_Security_NoTransferSend_UsesCall() public view {
+    |     ^ (Relevant source part starts here and spans across multiple lines).
+
+Analysing contracts...
+Running tests...
+
+Ran 7 tests for test/Governance.t.sol:GovernanceTest
+[PASS] test_CancelProposal() (gas: 183282)
+[PASS] test_DefeatedProposal() (gas: 318446)
+[PASS] test_GovernanceReverts() (gas: 23050)
+[PASS] test_GovernorGettersAndViewFunctions() (gas: 27311)
+[PASS] test_SuccessfulProposalLifecycle() (gas: 400980)
+[PASS] test_TokenDelegationAndCheckpoints() (gas: 187441)
+[PASS] test_TokenTransferUpdatesCheckpoints() (gas: 311208)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 133.21ms (57.68ms CPU time)
+
+Ran 8 tests for test/Security.t.sol:SecurityTests
+[PASS] test_Security_AccessControl_Fixed_AuthorizedMintSucceeds() (gas: 64156)
+[PASS] test_Security_AccessControl_Fixed_UnauthorizedMintReverts() (gas: 18189)
+[PASS] test_Security_AccessControl_RoleGrantRevoke() (gas: 89037)
+[PASS] test_Security_AccessControl_VulnerableContract_AnyoneCanMint() (gas: 239168)
+[PASS] test_Security_NoTransferSend_UsesCall() (gas: 255)
+[PASS] test_Security_NoTxOriginAuth() (gas: 20864)
+[PASS] test_Security_Reentrancy_AttackFails() (gas: 675342)
+[PASS] test_Security_Reentrancy_GuardReverts() (gas: 429344)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 446.05ms (50.07ms CPU time)
+
+Ran 5 tests for test/Invariant.t.sol:InvariantTests
+[PASS] invariant_AMMNotPaused() (runs: 64, calls: 960, reverts: 0)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| AMMHandler | addLiquidity    | 314   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | removeLiquidity | 308   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | swap            | 338   | 0       | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_GovTokenSupplyBelowMax() (runs: 64, calls: 960, reverts: 0)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| AMMHandler | addLiquidity    | 314   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | removeLiquidity | 308   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | swap            | 338   | 0       | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_KNeverDecreases() (runs: 64, calls: 960, reverts: 0)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| AMMHandler | addLiquidity    | 314   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | removeLiquidity | 308   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | swap            | 338   | 0       | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_LPSupplyConservation() (runs: 64, calls: 960, reverts: 0)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| AMMHandler | addLiquidity    | 314   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | removeLiquidity | 308   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | swap            | 338   | 0       | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+[PASS] invariant_ReservesMatchBalances() (runs: 64, calls: 960, reverts: 0)
+
+╭------------+-----------------+-------+---------+----------╮
+| Contract   | Selector        | Calls | Reverts | Discards |
++===========================================================+
+| AMMHandler | addLiquidity    | 314   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | removeLiquidity | 308   | 0       | 0        |
+|------------+-----------------+-------+---------+----------|
+| AMMHandler | swap            | 338   | 0       | 0        |
+╰------------+-----------------+-------+---------+----------╯
+
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 512.68ms (2.17s CPU time)
+
+Ran 10 tests for test/Fuzz.t.sol:FuzzTests
+[PASS] testFuzz_AddRemoveLiquidity_RoundTrip(uint256) (runs: 256, μ: 236372, ~: 236484)
+[PASS] testFuzz_Delegation_TransfersVotingPower(uint256) (runs: 256, μ: 210425, ~: 210589)
+[PASS] testFuzz_GetAmountOut_Monotone(uint256,uint256) (runs: 256, μ: 19747, ~: 19377)
+[PASS] testFuzz_Swap_AmountOutLessThanReserve(uint256) (runs: 256, μ: 122877, ~: 122803)
+[PASS] testFuzz_Swap_FeeAlwaysReducesOutput(uint256) (runs: 256, μ: 15481, ~: 15696)
+[PASS] testFuzz_Swap_KInvariant(uint256) (runs: 256, μ: 125156, ~: 125324)
+[PASS] testFuzz_Vault_DepositRedeem_NoInflation(uint256) (runs: 256, μ: 172619, ~: 172923)
+[PASS] testFuzz_Vault_PreviewDepositMatchesActual(uint256) (runs: 256, μ: 143519, ~: 143823)
+[PASS] testFuzz_Vault_SharesProportional(uint256,uint256) (runs: 256, μ: 181437, ~: 181819)
+[PASS] testFuzz_VotingPower_EqualsDelegatedBalance(uint256) (runs: 256, μ: 144342, ~: 144523)
+Suite result: ok. 10 passed; 0 failed; 0 skipped; finished in 532.08ms (1.70s CPU time)
+
+Ran 45 tests for test/AMM.t.sol:AMMTest
+[PASS] test_AddLiquidity_EmitsEvent() (gas: 276618)
+[PASS] test_AddLiquidity_InitialDeposit() (gas: 273159)
+[PASS] test_AddLiquidity_MinimumLiquidityBurned() (gas: 276927)
+[PASS] test_AddLiquidity_MintsLPTokens() (gas: 275484)
+[PASS] test_AddLiquidity_Revert_SlippageA() (gas: 283722)
+[PASS] test_AddLiquidity_Revert_WhenPaused() (gas: 53356)
+[PASS] test_AddLiquidity_Revert_ZeroAmount() (gas: 25720)
+[PASS] test_AddLiquidity_SubsequentDeposit_ProportionalLPMint() (gas: 340027)
+[PASS] test_AddLiquidity_TransfersTokens() (gas: 282876)
+[PASS] test_AddLiquidity_UpdatesReserves() (gas: 275158)
+[PASS] test_FeeConstants() (gas: 12435)
+[PASS] test_GetAmountOut_CorrectFormula() (gas: 13135)
+[PASS] test_GetAmountOut_Revert_ZeroReserveIn() (gas: 15010)
+[PASS] test_GetAmountOut_Revert_ZeroReserveOut() (gas: 15043)
+[PASS] test_GetReserves() (gas: 15475)
+[PASS] test_MultipleSwaps_KAlwaysGrows() (gas: 426146)
+[PASS] test_Pause_And_Unpause_Flow() (gas: 35282)
+[PASS] test_Pause_OnlyOwner() (gas: 18559)
+[PASS] test_Quote_CorrectRatio() (gas: 12721)
+[PASS] test_Quote_Revert_ZeroAmount() (gas: 15010)
+[PASS] test_Quote_Revert_ZeroReserves() (gas: 15053)
+[PASS] test_RemoveLiquidity_BurnsLPTokens() (gas: 281051)
+[PASS] test_RemoveLiquidity_EmitsEvent() (gas: 282407)
+[PASS] test_RemoveLiquidity_ReturnsTokens() (gas: 284462)
+[PASS] test_RemoveLiquidity_Revert_SlippageMin() (gas: 281543)
+[PASS] test_RemoveLiquidity_Revert_ZeroLiquidity() (gas: 25230)
+[PASS] test_RemoveLiquidity_UpdatesReserves() (gas: 280843)
+[PASS] test_RoundTrip_ApproxRefund() (gas: 345149)
+[PASS] test_Swap_AppliesFee() (gas: 277426)
+[PASS] test_Swap_AtoB_CorrectOutput() (gas: 322376)
+[PASS] test_Swap_BtoA_CorrectOutput() (gas: 322564)
+[PASS] test_Swap_EmitsEvent() (gas: 316979)
+[PASS] test_Swap_KInvariantHolds() (gas: 317734)
+[PASS] test_Swap_LargeAmount_DoesNotCrash() (gas: 341830)
+[PASS] test_Swap_Revert_InvalidToken() (gas: 284981)
+[PASS] test_Swap_Revert_NoLiquidity() (gas: 33722)
+[PASS] test_Swap_Revert_SlippageTooHigh() (gas: 286037)
+[PASS] test_Swap_Revert_WhenPaused() (gas: 312257)
+[PASS] test_Swap_Revert_ZeroInput() (gas: 284457)
+[PASS] test_TokenAddresses() (gas: 21620)
+[PASS] test_Unpause_OnlyOwner() (gas: 46465)
+[PASS] test_Upgrade_OnlyOwner() (gas: 3167354)
+[PASS] test_Upgrade_OwnerSucceeds() (gas: 3176074)
+[PASS] test_Upgrade_PreservesState() (gas: 3435759)
+[PASS] test_Version_IsOne() (gas: 12978)
+Suite result: ok. 45 passed; 0 failed; 0 skipped; finished in 530.44ms (364.40ms CPU time)
+
+Ran 5 test suites in 535.38ms (2.15s CPU time): 75 tests passed, 0 failed, 0 skipped (75 total tests)
+
+╭------------------------------+------------------+------------------+----------------+-----------------╮
+| File                         | % Lines          | % Statements     | % Branches     | % Funcs         |
++=======================================================================================================+
+| src/AMM.sol                  | 90.00% (99/110)  | 88.06% (118/134) | 60.71% (17/28) | 100.00% (14/14) |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| src/DeFiGovernor.sol         | 85.71% (18/21)   | 90.00% (18/20)   | 100.00% (0/0)  | 80.00% (8/10)   |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| src/GovernanceToken.sol      | 88.89% (16/18)   | 73.68% (14/19)   | 0.00% (0/3)    | 80.00% (4/5)    |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| src/YieldVault.sol           | 45.95% (17/37)   | 51.61% (16/31)   | 0.00% (0/3)    | 33.33% (4/12)   |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| src/mocks/MockAggregator.sol | 53.85% (7/13)    | 55.56% (5/9)     | 100.00% (0/0)  | 50.00% (2/4)    |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| test/Invariant.t.sol         | 96.72% (59/61)   | 90.74% (98/108)  | 42.86% (6/14)  | 100.00% (4/4)   |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| test/Security.t.sol          | 52.17% (12/23)   | 52.94% (9/17)    | 0.00% (0/3)    | 66.67% (4/6)    |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| test/helpers/MockERC20.sol   | 66.67% (4/6)     | 66.67% (2/3)     | 100.00% (0/0)  | 66.67% (2/3)    |
+|------------------------------+------------------+------------------+----------------+-----------------|
+| Total                        | 80.28% (232/289) | 82.11% (280/341) | 45.10% (23/51) | 72.41% (42/58)  |
+╰------------------------------+------------------+------------------+----------------+-----------------╯

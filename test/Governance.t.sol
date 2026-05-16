@@ -93,7 +93,7 @@ contract GovernanceTest is Test {
         // Change time to pass the timelock delay
         vm.warp(block.timestamp + 86400 + 1);
 
-        // Исполняем предложение
+        // Execute proposal
         governor.execute(targets, values, calldatas, descriptionHash);
         assertEq(uint256(governor.state(proposalId)), 7); // Executed (7)
     }
@@ -197,5 +197,13 @@ contract GovernanceTest is Test {
         try governor.cancel(targets, values, calldatas, descriptionHash) {
             assertEq(uint256(governor.state(proposalId)), 2); // Canceled (2)
         } catch { }
+    }
+
+    function test_Token_Burn() public {
+        vm.prank(owner);
+        govToken.mint(voter1, 1000e18);
+        vm.prank(voter1);
+        govToken.burn(500e18);
+        assertEq(govToken.balanceOf(voter1), 1_000_000e18 + 500e18);
     }
 }

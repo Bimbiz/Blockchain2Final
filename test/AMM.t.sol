@@ -450,4 +450,29 @@ contract AMMTest is Test {
         // But not too much less (< 1% of input)
         assertGt(balAfter, balBefore - swapIn / 100);
     }
+
+    function test_AddLiquidity_SmallAmounts_AboveMinLiquidity() public {
+        // sqrt(2000 * 2000) = 2000 > MINIMUM_LIQUIDITY (1000)
+        vm.prank(alice);
+        (uint256 aA, uint256 aB, uint256 lp) = amm.addLiquidity(2000, 2000, 0, 0);
+        assertEq(aA, 2000);
+        assertEq(aB, 2000);
+        assertEq(lp, 1000); // 2000 - MINIMUM_LIQUIDITY
+    }
+
+    function test_AddLiquidity_Revert_TinyAmounts_BelowMinLiquidity() public {
+        // sqrt(1 * 1) = 1 < MINIMUM_LIQUIDITY → revert
+        vm.prank(alice);
+        vm.expectRevert();
+        amm.addLiquidity(1, 1, 0, 0);
+    }
+
+    function test_AddLiquidity_OptimalA_Branch() public {
+        vm.prank(alice);
+        amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+
+        // amountBDesired меньше оптимального → берём ветку amountAOptimal
+        vm.prank(bob);
+        amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B / 2, 0, 0);
+    }
 }
