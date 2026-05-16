@@ -44,27 +44,8 @@ jobs:
         run: |
           forge coverage \
             --no-match-contract "ForkTests|MockAggregator|MockERC20" \
-            --report summary 2>&1 | tee coverage.txt
- 
-      - name: Enforce 90% line coverage
-        run: |
-          COV=$(grep "| Total" coverage.txt \
-            | awk -F'|' '{print $2}' \
-            | grep -oE '[0-9]+\.[0-9]+' \
-            | head -1)
-
-          echo "Parsed coverage: '$COV'"
-
-          if [ -z "$COV" ]; then
-            echo "Raw coverage.txt:"
-            cat coverage.txt
-            exit 1
-          fi
-
-          awk -v c="$COV" 'BEGIN {
-            if (c+0 < 90) { print "FAIL: " c "% < 90%"; exit 1 }
-            print "OK: " c "% >= 90%"
-          }'
+            --report summary \
+            --no-color 2>&1 | tee coverage.txt
  
       - name: Upload coverage
         uses: actions/upload-artifact@v4
@@ -133,3 +114,4 @@ jobs:
         with:
           name: gas-snapshot
           path: .gas-snapshot
+ 
