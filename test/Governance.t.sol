@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {DeFiGovernor} from "../src/DeFiGovernor.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
-import {
-    TimelockController
-} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { Test } from "forge-std/Test.sol";
+import { DeFiGovernor } from "../src/DeFiGovernor.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 
 contract GovernanceTest is Test {
     DeFiGovernor public governor;
@@ -74,12 +72,7 @@ contract GovernanceTest is Test {
 
         // Create proposal
         vm.prank(voter1);
-        uint256 proposalId = governor.propose(
-            targets,
-            values,
-            calldatas,
-            description
-        );
+        uint256 proposalId = governor.propose(targets, values, calldatas, description);
 
         // Change Voting Delay
         vm.roll(block.number + governor.votingDelay() + 1);
@@ -122,12 +115,7 @@ contract GovernanceTest is Test {
         string memory description = "Proposal #2: Defeat Me";
 
         vm.prank(voter1);
-        uint256 proposalId = governor.propose(
-            targets,
-            values,
-            calldatas,
-            description
-        );
+        uint256 proposalId = governor.propose(targets, values, calldatas, description);
 
         vm.roll(block.number + governor.votingDelay() + 1);
 
@@ -167,10 +155,7 @@ contract GovernanceTest is Test {
         vm.roll(block.number + 1);
 
         assertEq(governor.getVotes(voter1, block.number - 1), 950_000e18);
-        assertEq(
-            governor.getVotes(voter2, block.number - 1),
-            initialVotesV2 + 50_000e18
-        );
+        assertEq(governor.getVotes(voter2, block.number - 1), initialVotesV2 + 50_000e18);
         vm.prank(owner);
         govToken.burn(10e18);
     }
@@ -186,11 +171,7 @@ contract GovernanceTest is Test {
         assertTrue(threshold >= 0, "Proposal threshold cannot be negative");
 
         address governorTimelock = governor.timelock();
-        assertEq(
-            governorTimelock,
-            address(timelock),
-            "Timelock address mismatch"
-        );
+        assertEq(governorTimelock, address(timelock), "Timelock address mismatch");
     }
 
     /// @notice Test for canceling a proposal (if the Governor implementation supports it)
@@ -208,19 +189,14 @@ contract GovernanceTest is Test {
         string memory description = "Proposal #3: Cancel Me";
 
         vm.prank(voter1);
-        uint256 proposalId = governor.propose(
-            targets,
-            values,
-            calldatas,
-            description
-        );
+        uint256 proposalId = governor.propose(targets, values, calldatas, description);
 
         bytes32 descriptionHash = keccak256(bytes(description));
         vm.prank(voter1);
 
         try governor.cancel(targets, values, calldatas, descriptionHash) {
             assertEq(uint256(governor.state(proposalId)), 2); // Canceled (2)
-        } catch {}
+        } catch { }
     }
 
     function test_Token_Burn() public {

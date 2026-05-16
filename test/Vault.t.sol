@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {YieldVault} from "../src/YieldVault.sol";
-import {MockAggregator} from "../src/mocks/MockAggregator.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { YieldVault } from "../src/YieldVault.sol";
+import { MockAggregator } from "../src/mocks/MockAggregator.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
 
 contract VaultTest is Test {
     YieldVault public vault;
@@ -27,13 +27,7 @@ contract VaultTest is Test {
         asset = new MockERC20("Test Asset", "TST");
         feed = new MockAggregator(int256(INITIAL_PRICE), 8);
 
-        vault = new YieldVault(
-            asset,
-            admin,
-            address(feed),
-            MAX_STALENESS,
-            MIN_PRICE
-        );
+        vault = new YieldVault(asset, admin, address(feed), MAX_STALENESS, MIN_PRICE);
 
         asset.mint(alice, 1_000_000e18);
         asset.mint(bob, 1_000_000e18);
@@ -325,10 +319,7 @@ contract VaultTest is Test {
         vault.distributeYield(yieldAmount);
 
         // Both should get equal yield (equal shares)
-        assertEq(
-            vault.convertToAssets(aliceShares),
-            vault.convertToAssets(bobShares)
-        );
+        assertEq(vault.convertToAssets(aliceShares), vault.convertToAssets(bobShares));
     }
 
     // setPriceFeed
