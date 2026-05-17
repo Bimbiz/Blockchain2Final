@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeFi Capstone Super-App Engine</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="main-header">
+        <div class="header-title">
+            <h1>DeFi Super-App Dashboard</h1>
+            <small class="subtitle">Capstone Option A — Production Architecture Matrix</small>
+        </div>
+        <div class="wallet-zone">
+            <button id="connectBtn" class="btn btn-primary">Connect Web3 Wallet</button>
+            <div id="walletDetails" class="wallet-details hidden">
+                <span id="accountDisplay" class="address-text"></span>
+                <span id="networkBadge" class="badge">Checking Chain Sync...</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="errorBanner" class="error-banner hidden">
+        <strong>On-Chain Exception Trap:</strong> <span id="errorMessage"></span>
+    </div>
+
+    <main class="dashboard-grid">
+        <section class="card panel-left">
+            <h2>Account Balances & Metrics <small>(RPC Sync)</small></h2>
+            <hr>
+            <div class="metrics-list">
+                <p><strong>DGT Governance Balance:</strong> <span id="govBalance">0.0000</span> DGT</p>
+                <p><strong>Assigned Voting Power:</strong> <span id="votingPower">0.0000</span> Votes</p>
+                <p><strong>Current Delegate Designation:</strong> <span id="delegateDisplay">Unchecked</span></p>
+                <p><strong>DVS Yield Vault Shares:</strong> <span id="vaultShares">0.0000</span> DVS</p>
+                <p><strong>Your Pair LP Token Balance:</strong> <span id="lpBalance">0.0000</span> ALP</p>
+            </div>
+
+            <h3 class="section-spacer">Governance Actions</h3>
+            <div class="action-row">
+                <button id="delegateSelfBtn" class="btn btn-primary" disabled>Delegate Voting Power to Self</button>
+            </div>
+
+            <h3 class="section-spacer">Interact with Tokenized Yield Vault (ERC-4626)</h3>
+            <form id="vaultForm" class="interaction-form">
+                <input type="text" id="depositAmount" placeholder="Allocation size (e.g., 250.0)" required disabled>
+                <button type="submit" id="submitDepositBtn" class="btn btn-success" disabled>Approve & Deposit Assets</button>
+            </form>
+
+            <h3 class="section-spacer">Constant-Product AMM Operations (x·y=k)</h3>
+            <div class="amm-box">
+                <h4>1. Add Liquidity</h4>
+                <form id="addLiquidityForm" class="interaction-form-stacked">
+                    <div class="input-group">
+                        <input type="text" id="amountADesired" placeholder="Token A Desired" required disabled>
+                        <input type="text" id="amountBDesired" placeholder="Token B Desired" required disabled>
+                    </div>
+                    <button type="submit" id="submitLiquidityBtn" class="btn btn-success" disabled>Provide Dual Liquidity</button>
+                </form>
+
+                <h4 class="section-spacer-small">2. Execute Asset Swap (0.3% Fee Layer)</h4>
+                <form id="swapForm" class="interaction-form-stacked">
+                    <select id="tokenInSelect" disabled>
+                        <option value="tokenA">Token A → Token B</option>
+                        <option value="tokenB">Token B → Token A</option>
+                    </select>
+                    <input type="text" id="swapAmountIn" placeholder="Exact Input Amount" required disabled>
+                    <button type="submit" id="submitSwapBtn" class="btn btn-accent" disabled>Execute Custom Swap</button>
+                </form>
+            </div>
+        </section>
+
+        <section class="card panel-right">
+            <h2>Your Liquidity Positions <small>(LPPositionNFT Trackers)</small></h2>
+            <hr>
+            <div id="nftLoadingMsg" class="status-msg">Establish wallet connection to sync positions...</div>
+            <div id="nftContainer" class="nft-grid"></div>
+
+            <h2 class="section-spacer">Active Proposals & Governance <small>(The Graph Subgraph Sync)</small></h2>
+            <hr>
+            <div id="governanceStatusMsg" class="status-msg">Awaiting secure wallet handshake...</div>
+            <div id="proposalContainer" class="proposal-container"></div>
+        </section>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.7.0/ethers.umd.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
