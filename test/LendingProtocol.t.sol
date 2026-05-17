@@ -38,10 +38,8 @@ contract LendingProtocolTest is Test {
 
         // 3. Деплоим YieldVault (UUPS proxy)
         YieldVault vaultImpl = new YieldVault();
-        bytes memory vaultInit = abi.encodeCall(
-            YieldVault.initialize,
-            (govToken, owner, address(priceFeed), 3600, 100 * 10 ** 8)
-        );
+        bytes memory vaultInit =
+            abi.encodeCall(YieldVault.initialize, (govToken, owner, address(priceFeed), 3600, 100 * 10 ** 8));
         vault = YieldVault(address(new ERC1967Proxy(address(vaultImpl), vaultInit)));
 
         // 4. Деплоим LendingProtocol

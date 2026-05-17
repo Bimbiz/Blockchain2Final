@@ -1,22 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {
-    ERC1967Proxy
-} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    TimelockController
-} from "@openzeppelin/contracts/governance/TimelockController.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { ERC1967Proxy } from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
 
-import {YieldVault} from "../src/YieldVault.sol";
-import {AMM} from "../src/AMM.sol";
-import {GovernanceToken} from "../src/GovernanceToken.sol";
-import {DeFiGovernor} from "../src/DeFiGovernor.sol";
-import {MockAggregator} from "../src/mocks/MockAggregator.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
-import {LendingProtocol} from "../src/LendingProtocol.sol";
+import { YieldVault } from "../src/YieldVault.sol";
+import { AMM } from "../src/AMM.sol";
+import { GovernanceToken } from "../src/GovernanceToken.sol";
+import { DeFiGovernor } from "../src/DeFiGovernor.sol";
+import { MockAggregator } from "../src/mocks/MockAggregator.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
+import { LendingProtocol } from "../src/LendingProtocol.sol";
 
 /// @title CoverageBoost
 /// @notice Targeted tests to cover previously-uncovered branches and functions,
@@ -40,10 +36,8 @@ contract CoverageBoostTest is Test {
         vFeed = new MockAggregator(int256(INITIAL_PRICE), 8);
 
         YieldVault impl = new YieldVault();
-        bytes memory init = abi.encodeCall(
-            YieldVault.initialize,
-            (vAsset, admin, address(vFeed), MAX_STALENESS, MIN_PRICE)
-        );
+        bytes memory init =
+            abi.encodeCall(YieldVault.initialize, (vAsset, admin, address(vFeed), MAX_STALENESS, MIN_PRICE));
         vault = YieldVault(address(new ERC1967Proxy(address(impl), init)));
 
         vAsset.mint(alice, 1_000_000e18);
@@ -105,12 +99,7 @@ contract CoverageBoostTest is Test {
 
         vFeed.setPrice(int256(MIN_PRICE) - 1);
         vm.prank(alice);
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                YieldVault.PriceBelowMinimum.selector,
-                int256(MIN_PRICE) - 1
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(YieldVault.PriceBelowMinimum.selector, int256(MIN_PRICE) - 1));
         vault.deposit(DEPOSIT_AMOUNT, alice);
     }
 
@@ -190,7 +179,7 @@ contract CoverageBoostTest is Test {
         feed.setPrice(int256(1600e8));
         assertEq(feed.roundId(), 2);
         // latestRoundData round-trip
-        (uint80 rid, int256 p, , uint256 updAt, ) = feed.latestRoundData();
+        (uint80 rid, int256 p,, uint256 updAt,) = feed.latestRoundData();
         assertEq(rid, 2);
         assertEq(p, int256(1600e8));
         assertGt(updAt, 0);
@@ -290,12 +279,7 @@ contract CoverageBoostTest is Test {
         calldatas[0] = abi.encodeCall(govToken.mint, (alice, 1e18));
 
         vm.prank(alice);
-        uint256 proposalId = governor.propose(
-            targets,
-            values,
-            calldatas,
-            "Test proposal"
-        );
+        uint256 proposalId = governor.propose(targets, values, calldatas, "Test proposal");
 
         // proposalNeedsQueuing should return true (timelock governor)
         // Advance past voting delay
@@ -338,9 +322,7 @@ contract CoverageBoostTest is Test {
     /// @dev addLiquidity branch where amountBOptimal > amountBDesired
     ///      This triggers the else-branch (lines 141/146/147 in lcov numbering).
     ///      Achieved by providing more B than A relative to pool ratio.
-    function test_AddLiquidity_ElseBranch_AmountBOptimalExceedsDesired()
-        public
-    {
+    function test_AddLiquidity_ElseBranch_AmountBOptimalExceedsDesired() public {
         _deployAMM();
         // Initial deposit: 100_000 A : 200_000 B  → ratio = 0.5 A per B
         vm.prank(alice);
@@ -355,12 +337,13 @@ contract CoverageBoostTest is Test {
         uint256 amountADesired = 50_000e18;
         uint256 amountBDesired = 30_000e18; // less than amountBOptimal (100_000)
         vm.prank(bob);
-        (uint256 usedA, uint256 usedB, uint256 lp) = amm.addLiquidity(
-            amountADesired,
-            amountBDesired,
-            0, // amountAMin
-            0 // amountBMin
-        );
+        (uint256 usedA, uint256 usedB, uint256 lp) =
+            amm.addLiquidity(
+                amountADesired,
+                amountBDesired,
+                0, // amountAMin
+                0 // amountBMin
+            );
         assertGt(lp, 0);
         // usedB should equal amountBDesired since B was the binding constraint
         assertEq(usedB, amountBDesired);
@@ -411,7 +394,7 @@ contract CoverageBoostTest is Test {
     function test_RemoveLiquidity_SlippageB_Reverts() public {
         _deployAMM();
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(100_000e18, 100_000e18, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(100_000e18, 100_000e18, 0, 0);
 
         // Remove with unrealistically high amountBMin
         vm.prank(alice);
@@ -450,10 +433,7 @@ contract CoverageBoostTest is Test {
         vm.stopPrank();
 
         // Deploy the attacker (covers ReentrancyAttacker constructor)
-        ReentrancyAttackerHelper atkContract = new ReentrancyAttackerHelper(
-            address(pool),
-            address(malToken)
-        );
+        ReentrancyAttackerHelper atkContract = new ReentrancyAttackerHelper(address(pool), address(malToken));
         // Activate the callback so transferFrom triggers onERC20Transfer
         malToken.setCallback(address(atkContract));
         malToken.mint(address(atkContract), 100_000e18);
@@ -477,20 +457,11 @@ contract CoverageBoostTest is Test {
         MockAggregator feed = new MockAggregator(int256(2000e8), 8);
 
         YieldVault vImpl = new YieldVault();
-        bytes memory vInit = abi.encodeCall(
-            YieldVault.initialize,
-            (asset, admin, address(feed), 3600, 100e8)
-        );
-        YieldVault lVault = YieldVault(
-            address(new ERC1967Proxy(address(vImpl), vInit))
-        );
+        bytes memory vInit = abi.encodeCall(YieldVault.initialize, (asset, admin, address(feed), 3600, 100e8));
+        YieldVault lVault = YieldVault(address(new ERC1967Proxy(address(vImpl), vInit)));
 
         // Import LendingProtocol
-        LendingProtocolHelper lending = new LendingProtocolHelper(
-            address(lVault),
-            address(asset),
-            address(feed)
-        );
+        LendingProtocolHelper lending = new LendingProtocolHelper(address(lVault), address(asset), address(feed));
 
         asset.mint(alice, 1000e18);
         vm.prank(alice);
@@ -513,13 +484,10 @@ contract CoverageBoostTest is Test {
 
 /// @notice A price feed that always reverts latestRoundData (covers the catch branch)
 contract BrokenFeed {
-    function latestRoundData()
-        external
-        pure
-        returns (uint80, int256, uint256, uint256, uint80)
-    {
+    function latestRoundData() external pure returns (uint80, int256, uint256, uint256, uint80) {
         revert("BrokenFeed: always reverts");
     }
+
     function decimals() external pure returns (uint8) {
         return 8;
     }
@@ -540,17 +508,13 @@ contract VulnerableTokenHelper {
 contract MaliciousTokenHelper is MockERC20 {
     address public callback;
 
-    constructor() MockERC20("Malicious", "MAL") {}
+    constructor() MockERC20("Malicious", "MAL") { }
 
     function setCallback(address _cb) external {
         callback = _cb;
     }
 
-    function transferFrom(
-        address from,
-        address to,
-        uint256 amount
-    ) public override returns (bool) {
+    function transferFrom(address from, address to, uint256 amount) public override returns (bool) {
         bool result = super.transferFrom(from, to, amount);
         if (callback != address(0)) {
             ReentrancyAttackerHelper(callback).onERC20Transfer();
@@ -592,9 +556,7 @@ contract ReentrancyAttackerHelper {
 
 /// @notice Thin wrapper so we can instantiate LendingProtocol in tests
 contract LendingProtocolHelper is LendingProtocol {
-    constructor(
-        address _collateral,
-        address _borrowToken,
-        address _priceFeed
-    ) LendingProtocol(_collateral, _borrowToken, _priceFeed) {}
+    constructor(address _collateral, address _borrowToken, address _priceFeed)
+        LendingProtocol(_collateral, _borrowToken, _priceFeed)
+    { }
 }

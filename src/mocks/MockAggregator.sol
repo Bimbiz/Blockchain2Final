@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IPriceFeed} from "../interfaces/IPriceFeed.sol";
+import { IPriceFeed } from "../interfaces/IPriceFeed.sol";
 
 /// @notice Controllable mock Chainlink price feed for tests
 contract MockAggregator is IPriceFeed {
@@ -28,12 +28,7 @@ contract MockAggregator is IPriceFeed {
         updatedAt = _updatedAt;
     }
 
-    function latestRoundData()
-        external
-        view
-        override
-        returns (uint80, int256, uint256, uint256, uint80)
-    {
+    function latestRoundData() external view override returns (uint80, int256, uint256, uint256, uint80) {
         return (roundId, price, updatedAt, updatedAt, roundId);
     }
 }

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {AMM} from "../src/AMM.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
+import { Test, console2 } from "forge-std/Test.sol";
+import { AMM } from "../src/AMM.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
 
 contract AMMTest is Test {
     AMM public amm;
@@ -23,12 +23,8 @@ contract AMMTest is Test {
         tokenA = new MockERC20("Token A", "TKNA");
         tokenB = new MockERC20("Token B", "TKNB");
 
-        address t0 = address(tokenA) < address(tokenB)
-            ? address(tokenA)
-            : address(tokenB);
-        address t1 = address(tokenA) < address(tokenB)
-            ? address(tokenB)
-            : address(tokenA);
+        address t0 = address(tokenA) < address(tokenB) ? address(tokenA) : address(tokenB);
+        address t1 = address(tokenA) < address(tokenB) ? address(tokenB) : address(tokenA);
 
         amm = new AMM(t0, t1, owner);
 
@@ -54,12 +50,7 @@ contract AMMTest is Test {
 
     function test_AddLiquidity_InitialDeposit() public {
         vm.prank(alice);
-        (uint256 aA, uint256 aB, uint256 lp) = amm.addLiquidity(
-            LIQUIDITY_A,
-            LIQUIDITY_B,
-            0,
-            0
-        );
+        (uint256 aA, uint256 aB, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         assertEq(aA, LIQUIDITY_A);
         assertEq(aB, LIQUIDITY_B);
         assertGt(lp, 0);
@@ -67,7 +58,7 @@ contract AMMTest is Test {
 
     function test_AddLiquidity_MintsLPTokens() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         assertEq(amm.balanceOf(alice), lp);
     }
 
@@ -89,15 +80,10 @@ contract AMMTest is Test {
 
     function test_AddLiquidity_SubsequentDeposit_ProportionalLPMint() public {
         vm.prank(alice);
-        (, , uint256 lp1) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp1) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
 
         vm.prank(bob);
-        (, , uint256 lp2) = amm.addLiquidity(
-            LIQUIDITY_A / 2,
-            LIQUIDITY_B / 2,
-            0,
-            0
-        );
+        (,, uint256 lp2) = amm.addLiquidity(LIQUIDITY_A / 2, LIQUIDITY_B / 2, 0, 0);
         assertApproxEqAbs(lp2, lp1 / 2, 1000);
     }
 
@@ -141,7 +127,7 @@ contract AMMTest is Test {
 
     function test_RemoveLiquidity_ReturnsTokens() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
 
         uint256 balABefore = tokenA.balanceOf(alice);
         vm.prank(alice);
@@ -154,7 +140,7 @@ contract AMMTest is Test {
 
     function test_RemoveLiquidity_BurnsLPTokens() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         vm.prank(alice);
         amm.removeLiquidity(lp, 0, 0);
         assertEq(amm.balanceOf(alice), 0);
@@ -168,7 +154,7 @@ contract AMMTest is Test {
 
     function test_RemoveLiquidity_Revert_SlippageMin() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         vm.prank(alice);
         vm.expectRevert(AMM.SlippageExceeded.selector);
         amm.removeLiquidity(lp, type(uint256).max, 0);
@@ -176,7 +162,7 @@ contract AMMTest is Test {
 
     function test_RemoveLiquidity_EmitsEvent() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         vm.expectEmit(true, false, false, false, address(amm));
         emit AMM.LiquidityRemoved(alice, 0, 0, lp);
         vm.prank(alice);
@@ -185,7 +171,7 @@ contract AMMTest is Test {
 
     function test_RemoveLiquidity_UpdatesReserves() public {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         vm.prank(alice);
         amm.removeLiquidity(lp, 0, 0);
         (uint256 rA, uint256 rB) = amm.getReserves();
@@ -197,18 +183,14 @@ contract AMMTest is Test {
 
     function _setupPool() internal returns (uint256) {
         vm.prank(alice);
-        (, , uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
+        (,, uint256 lp) = amm.addLiquidity(LIQUIDITY_A, LIQUIDITY_B, 0, 0);
         return lp;
     }
 
     function test_Swap_AtoB_CorrectOutput() public {
         _setupPool();
         uint256 amountIn = 1_000e18;
-        uint256 expectedOut = amm.getAmountOut(
-            amountIn,
-            LIQUIDITY_A,
-            LIQUIDITY_B
-        );
+        uint256 expectedOut = amm.getAmountOut(amountIn, LIQUIDITY_A, LIQUIDITY_B);
         uint256 balBefore = tokenB.balanceOf(bob);
         vm.prank(bob);
         amm.swap(address(tokenA), amountIn, 0);
@@ -218,11 +200,7 @@ contract AMMTest is Test {
     function test_Swap_BtoA_CorrectOutput() public {
         _setupPool();
         uint256 amountIn = 1_000e18;
-        uint256 expectedOut = amm.getAmountOut(
-            amountIn,
-            LIQUIDITY_B,
-            LIQUIDITY_A
-        );
+        uint256 expectedOut = amm.getAmountOut(amountIn, LIQUIDITY_B, LIQUIDITY_A);
         uint256 balBefore = tokenA.balanceOf(bob);
         vm.prank(bob);
         amm.swap(address(tokenB), amountIn, 0);
@@ -233,11 +211,7 @@ contract AMMTest is Test {
         _setupPool();
         uint256 amountIn = 1_000e18;
         uint256 noFeeOut = (amountIn * LIQUIDITY_B) / (LIQUIDITY_A + amountIn);
-        uint256 withFeeOut = amm.getAmountOut(
-            amountIn,
-            LIQUIDITY_A,
-            LIQUIDITY_B
-        );
+        uint256 withFeeOut = amm.getAmountOut(amountIn, LIQUIDITY_A, LIQUIDITY_B);
         assertLt(withFeeOut, noFeeOut);
     }
 

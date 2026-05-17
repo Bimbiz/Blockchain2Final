@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {IPriceFeed} from "./interfaces/IPriceFeed.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IPriceFeed } from "./interfaces/IPriceFeed.sol";
 
 /// @title LendingProtocol
 /// @notice Позволяет пользователям вносить акции YieldVault (DVS) в качестве залога и занимать TokenB.
@@ -46,7 +46,7 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
 
     /// @notice Чтение цены из Chainlink с валидацией таймстампа (Требование безопасности проекта)
     function getLatestPrice() public view returns (uint256) {
-        (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
+        (, int256 price,, uint256 updatedAt,) = priceFeed.latestRoundData();
         if (updatedAt == 0 || block.timestamp - updatedAt > PRICE_STALENESS_THRESHOLD) revert StalePrice();
         if (price <= 0) revert InvalidPrice();
         return uint256(price);
@@ -68,7 +68,7 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
         UserPosition storage position = positions[msg.sender];
 
         uint256 assetPrice = getLatestPrice();
-        uint256 collateralValue = (position.collateralAmount * assetPrice) / 10**8;
+        uint256 collateralValue = (position.collateralAmount * assetPrice) / 10 ** 8;
         uint256 maxBorrowAllowed = (collateralValue * LTV) / 100;
 
         if (position.borrowedAmount + _borrowAmount > maxBorrowAllowed) revert OverBorrowLimit();
@@ -97,7 +97,7 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
         if (_amount > position.collateralAmount) revert OverBorrowLimit();
 
         uint256 assetPrice = getLatestPrice();
-        uint256 remainingCollateralValue = ((position.collateralAmount - _amount) * assetPrice) / 10**8;
+        uint256 remainingCollateralValue = ((position.collateralAmount - _amount) * assetPrice) / 10 ** 8;
         uint256 maxBorrowAllowed = (remainingCollateralValue * LTV) / 100;
 
         if (position.borrowedAmount > maxBorrowAllowed) revert OverBorrowLimit();

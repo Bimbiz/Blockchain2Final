@@ -31,10 +31,8 @@ contract VaultTest is Test {
         YieldVault impl = new YieldVault();
 
         // Encode initializer call
-        bytes memory initData = abi.encodeCall(
-            YieldVault.initialize,
-            (asset, admin, address(feed), MAX_STALENESS, MIN_PRICE)
-        );
+        bytes memory initData =
+            abi.encodeCall(YieldVault.initialize, (asset, admin, address(feed), MAX_STALENESS, MIN_PRICE));
 
         // Deploy UUPS proxy
         ERC1967Proxy proxy = new ERC1967Proxy(address(impl), initData);
