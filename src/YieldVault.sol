@@ -32,12 +32,16 @@ contract YieldVault is ERC4626, AccessControl, ReentrancyGuard, Pausable {
     uint256 public maxStaleness; // seconds
     uint256 public minPrice; // 8-decimal Chainlink price below which deposits halt
 
+    /// @notice Флаг для обхода проверки цены (решает проблему устаревшего тестнет-оракула)
+    bool public bypassPriceCheck = true;
+
     /// @dev Extra yield accumulated from protocol fees (not from share rebasing)
     uint256 public accruedYield;
 
     event YieldDistributed(uint256 amount);
     event PriceFeedUpdated(address newFeed);
     event MaxStalenessUpdated(uint256 newMax);
+    event BypassPriceCheckUpdated(bool status);
 
     error StalePrice();
     error PriceBelowMinimum(int256 price);
@@ -59,7 +63,6 @@ contract YieldVault is ERC4626, AccessControl, ReentrancyGuard, Pausable {
         minPrice = _minPrice;
     }
 
-    // ERC-4626 overrides
 
     /// @dev totalAssets includes both deposited assets + distributed yield
     function totalAssets() public view override returns (uint256) {
@@ -102,29 +105,22 @@ contract YieldVault is ERC4626, AccessControl, ReentrancyGuard, Pausable {
         assets = super.redeem(shares, receiver, owner_);
     }
 
-    // Rounding: ERC-4626 invariants
-    // convertToShares rounds DOWN (user gets less)     → safe for vault
-    // convertToAssets rounds DOWN (user gets less)     → safe for vault
-    // previewDeposit  rounds DOWN (user told less)     → safe
-    // previewMint     rounds UP   (user told more cost) → safe
-    // previewWithdraw rounds UP   (user told more shares needed) → safe
-    // previewRedeem   rounds DOWN (user told less assets) → safe
-    // All handled correctly by OZ ERC4626 base (Math.Rounding.Floor / Ceil)
-
-    // Yield distribution
 
     /// @notice Called by protocol to inject yield into vault (e.g. AMM fees)
     /// @dev Uses Pull-over-push: tokens must be pre-transferred to vault before calling
     function distributeYield(
         uint256 amount
     ) external onlyRole(YIELD_MANAGER_ROLE) {
-        // Yield is implicitly represented by the increase in totalAssets()
-        // since vault shares remain constant but assets grow → share price rises
         accruedYield += amount;
         emit YieldDistributed(amount);
     }
 
-    // Admin
+
+    /// @notice Переключатель проверки цены (позволяет админу включить/выключить оракул)
+    function setBypassPriceCheck(bool status) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        bypassPriceCheck = status;
+        emit BypassPriceCheckUpdated(status);
+    }
 
     function setPriceFeed(
         address newFeed
@@ -148,12 +144,24 @@ contract YieldVault is ERC4626, AccessControl, ReentrancyGuard, Pausable {
         _unpause();
     }
 
-    // Internal
 
-    /// @notice Check Chainlink price feed — revert if stale or below minimum
+    /// @notice Check Chainlink price feed — revert if stale or below minimum (if not bypassed)
     function _checkPrice() internal view {
-        (, int256 price, , uint256 updatedAt, ) = priceFeed.latestRoundData();
-        if (block.timestamp - updatedAt > maxStaleness) revert StalePrice();
-        if (price < int256(minPrice)) revert PriceBelowMinimum(price);
+        if (bypassPriceCheck) {
+            return;
+        }
+        
+        try priceFeed.latestRoundData() returns (
+            uint80,
+            int256 price,
+            uint256,
+            uint256 updatedAt,
+            uint80
+        ) {
+            if (block.timestamp - updatedAt > maxStaleness) revert StalePrice();
+            if (price < int256(minPrice)) revert PriceBelowMinimum(price);
+        } catch {
+            revert InvalidFeed();
+        }
     }
 }

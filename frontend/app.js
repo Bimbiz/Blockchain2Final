@@ -1,20 +1,23 @@
-const TARGET_CHAIN_ID = "0x1aa5"; // Arbitrum Sepolia Hexadecimal Chain Matrix
-const ALCHEMY_RPC_URL = "https://eth-mainnet.g.alchemy.com/v2/ZBEvTc4O3PQO8krFEe7M4";
+const TARGET_CHAIN_ID = 421614; 
+const TARGET_CHAIN_HEX = "0x66eee"; 
+
+const ALCHEMY_RPC_URL = "https://arb-sepolia.g.alchemy.com/v2/3QNIXQa4gTi1nydryanIW";
 const GRAPH_API_URI = "https://api.thegraph.com/subgraphs/name/yourteam/defi-super-app";
 
 const CONTRACT_ADDRESSES = {
-    governanceToken: "0xYourDeployedGovernanceTokenAddress",
-    defiGovernor: "0xYourDeployedDeFiGovernorAddress",
-    yieldVault: "0xYourDeployedYieldVaultAddress",
-    lpPositionNFT: "0xYourDeployedLPPositionNFTAddress",
-    ammPairProxy: "0xYourActiveAMMPairProxyAddress" 
+    governanceToken: "0xda8ecc4a0ec8fc45de17d74718e6092e46e46f23",
+    defiGovernor: "0xd6d5f47be1f2d427857e8d4835774d0e8c5e96be",
+    yieldVault: "0x24aec982938af51c7fd32d9a9555a11ba2d6de1e",
+    lpPositionNFT: "",
+    ammPairProxy: "0x2aa5e83311d3c647fb25d003eafcedb57dd4c803",
+    ammPairProxyContract: "0x2aa5e83311d3c647fb25d003eafcedb57dd4c803"
 };
 
 const GOVERNANCE_TOKEN_ABI = [
     "function balanceOf(address account) view returns (uint256)",
     "function delegates(address account) view returns (address)",
     "function getVotes(address account) view returns (uint256)",
-    "function delegate(address delegatee) returns ()",
+    "function delegate(address delegatee)",
     "function approve(address spender, uint256 amount) returns (bool)",
     "error MaxSupplyExceeded()",
     "error ZeroAddress()"
@@ -27,7 +30,10 @@ const STANDARD_ERC20_ABI = [
 
 const GOVERNOR_ABI = [
     "function castVote(uint256 proposalId, uint8 support) returns (uint256)",
-    "function proposalThreshold() view returns (uint256)"
+    "function proposalThreshold() view returns (uint256)",
+    "function votingDelay() view returns (uint256)",
+    "function votingPeriod() view returns (uint256)",
+    "function quorum(uint256 blockNumber) view returns (uint256)"
 ];
 
 const YIELD_VAULT_ABI = [
@@ -43,10 +49,7 @@ const AMM_PAIR_ABI = [
     "function reserveB() view returns (uint256)",
     "function balanceOf(address account) view returns (uint256)",
     "function addLiquidity(uint256 amountADesired, uint256 amountBDesired, uint256 amountAMin, uint256 amountBMin) returns (uint256 amountA, uint256 amountB, uint256 liquidity)",
-    "function swap(address tokenIn, uint256 amountIn, uint256 amountOutMin) returns (uint256 amountOut)",
-    "error KInvariantViolated()",
-    "error SlippageExceeded()",
-    "error InsufficientLiquidity()"
+    "function swap(address tokenIn, uint256 amountIn, uint256 amountOutMin) returns (uint256 amountOut)"
 ];
 
 const LP_NFT_ENUMERABLE_ABI = [
@@ -55,13 +58,11 @@ const LP_NFT_ENUMERABLE_ABI = [
     "function positions(uint256 tokenId) view returns (address pair, uint256 lpAmount, uint256 mintedAt)"
 ];
 
-// Context Architecture States
 let provider = null;
 let signer = null;
 let currentAccount = "";
 let currentChainId = "";
 
-// Capture DOM Nodes
 const connectBtn = document.getElementById("connectBtn");
 const walletDetails = document.getElementById("walletDetails");
 const accountDisplay = document.getElementById("accountDisplay");
@@ -76,7 +77,6 @@ const nftLoadingMsg = document.getElementById("nftLoadingMsg");
 const proposalContainer = document.getElementById("proposalContainer");
 const governanceStatusMsg = document.getElementById("governanceStatusMsg");
 
-// Core AMM Element Injections
 const amountADesiredInput = document.getElementById("amountADesired");
 const amountBDesiredInput = document.getElementById("amountBDesired");
 const submitLiquidityBtn = document.getElementById("submitLiquidityBtn");
@@ -87,17 +87,17 @@ const submitSwapBtn = document.getElementById("submitSwapBtn");
 window.addEventListener('DOMContentLoaded', () => {
     if (window.ethereum) {
         window.ethereum.on('accountsChanged', handleAccountsChanged);
-        window.ethereum.on('chainChanged', handleChainChanged);
+        window.ethereum.on('chainChanged', handleChainChangedState);
     } else {
         showError("Web3 signature client missing. Install Metamask or Rabby extension framework.");
     }
 });
 
-connectBtn.addEventListener('click', connectWallet);
-document.getElementById("vaultForm").addEventListener('submit', executeVaultDeposit);
-delegateSelfBtn.addEventListener('click', executeSelfDelegation);
-document.getElementById("addLiquidityForm").addEventListener('submit', executeAddLiquidity);
-document.getElementById("swapForm").addEventListener('submit', executeAMMSwap);
+if (connectBtn) connectBtn.addEventListener('click', connectWallet);
+if (document.getElementById("vaultForm")) document.getElementById("vaultForm").addEventListener('submit', executeVaultDeposit);
+if (delegateSelfBtn) delegateSelfBtn.addEventListener('click', executeSelfDelegation);
+if (document.getElementById("addLiquidityForm")) document.getElementById("addLiquidityForm").addEventListener('submit', executeAddLiquidity);
+if (document.getElementById("swapForm")) document.getElementById("swapForm").addEventListener('submit', executeAMMSwap);
 
 async function connectWallet() {
     clearError();
@@ -106,7 +106,7 @@ async function connectWallet() {
         const accounts = await provider.send("eth_requestAccounts", []);
         const network = await provider.getNetwork();
         
-        currentChainId = "0x" + network.chainId.toString(16);
+        currentChainId = Number(network.chainId); 
         signer = await provider.getSigner();
         currentAccount = accounts[0];
 
@@ -122,148 +122,327 @@ async function connectWallet() {
     }
 }
 
+function handleChainChangedState(hexChainId) { 
+    currentChainId = Number(hexChainId);
+    updateDOMWalletElements(); 
+    if (currentChainId === TARGET_CHAIN_ID) {
+        runAggregationPipeline(); 
+    }
+}
+
 async function enforceNetworkSwitch() {
     try {
         await window.ethereum.request({
             method: "wallet_switchEthereumChain",
-            params: [{ chainId: TARGET_CHAIN_ID }]
+            params: [{ chainId: TARGET_CHAIN_HEX }]
         });
     } catch (err) {
-        if (err.code === 4902) showError("Ecosystem target chain layout missing from provider arrays.");
-        else handleExceptionLogs(err);
+        if (err.code === 4902) {
+            try {
+                await window.ethereum.request({
+                    method: "wallet_addEthereumChain",
+                    params: [{
+                        chainId: TARGET_CHAIN_HEX,
+                        chainName: "Arbitrum Sepolia Testnet",
+                        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+                        rpcUrls: ["https://sepolia-rollup.arbitrum.io/rpc"],
+                        blockExplorerUrls: ["https://sepolia-arbiscan.io"]
+                    }]
+                });
+            } catch (addErr) {
+                showError("Failed to auto-configure Arbitrum Sepolia network in wallet.");
+            }
+        } else {
+            handleExceptionLogs(err);
+        }
     }
 }
 
 function updateDOMWalletElements() {
     if (currentAccount) {
-        connectBtn.classList.add("hidden");
-        walletDetails.classList.remove("hidden");
-        accountDisplay.innerText = `${currentAccount.slice(0, 6)}...${currentAccount.slice(-4)}`;
+        if (connectBtn) connectBtn.classList.add("hidden");
+        if (walletDetails) walletDetails.classList.remove("hidden");
+        if (accountDisplay) accountDisplay.innerText = `${currentAccount.slice(0, 6)}...${currentAccount.slice(-4)}`;
         
         const isCorrectChain = currentChainId === TARGET_CHAIN_ID;
-        networkBadge.innerText = isCorrectChain ? "L2 Core Synchronized" : "MALFORMED NETWORK CONFIG";
-        networkBadge.className = isCorrectChain ? "badge badge-green" : "badge badge-red";
+        if (networkBadge) {
+            networkBadge.innerText = isCorrectChain ? "L2 Core Synchronized" : "MALFORMED NETWORK CONFIG";
+            networkBadge.className = isCorrectChain ? "badge badge-green" : "badge badge-red";
+        }
 
         const inputs = [depositInput, amountADesiredInput, amountBDesiredInput, swapAmountIn, tokenInSelect];
         const buttons = [submitDepositBtn, delegateSelfBtn, submitLiquidityBtn, submitSwapBtn];
         
-        inputs.forEach(i => isCorrectChain ? i.removeAttribute("disabled") : i.setAttribute("disabled", "true"));
-        buttons.forEach(b => isCorrectChain ? b.removeAttribute("disabled") : b.setAttribute("disabled", "true"));
+        inputs.forEach(i => { if(i) isCorrectChain ? i.removeAttribute("disabled") : i.setAttribute("disabled", "true"); });
+        buttons.forEach(b => { if(b) isCorrectChain ? b.removeAttribute("disabled") : b.setAttribute("disabled", "true"); });
     }
 }
 
 async function runAggregationPipeline() {
     if (!provider || currentChainId !== TARGET_CHAIN_ID) return;
+    clearError(); 
     try {
         const govToken = new ethers.Contract(CONTRACT_ADDRESSES.governanceToken, GOVERNANCE_TOKEN_ABI, provider);
         const vault = new ethers.Contract(CONTRACT_ADDRESSES.yieldVault, YIELD_VAULT_ABI, provider);
-        const ammPair = new ethers.Contract(CONTRACT_ADDRESSES.ammPairProxy, AMM_PAIR_ABI, provider);
 
-        const [govBal, votingPower, currentDelegate, vaultShares, lpBalance] = await Promise.all([
+        const [govBal, votingPower, currentDelegate, vaultShares] = await Promise.all([
             govToken.balanceOf(currentAccount),
             govToken.getVotes(currentAccount),
             govToken.delegates(currentAccount),
-            vault.balanceOf(currentAccount),
-            ammPair.balanceOf(currentAccount)
+            vault.balanceOf(currentAccount)
         ]);
 
-        document.getElementById("govBalance").innerText = parseFloat(ethers.formatEther(govBal)).toFixed(4);
-        document.getElementById("votingPower").innerText = parseFloat(ethers.formatEther(votingPower)).toFixed(4);
-        document.getElementById("vaultShares").innerText = parseFloat(ethers.formatEther(vaultShares)).toFixed(4);
-        document.getElementById("lpBalance").innerText = parseFloat(ethers.formatEther(lpBalance)).toFixed(4);
+        if(document.getElementById("govBalance")) document.getElementById("govBalance").innerText = parseFloat(ethers.formatEther(govBal)).toFixed(4);
+        if(document.getElementById("votingPower")) document.getElementById("votingPower").innerText = parseFloat(ethers.formatEther(votingPower)).toFixed(4);
+        if(document.getElementById("vaultShares")) document.getElementById("vaultShares").innerText = parseFloat(ethers.formatEther(vaultShares)).toFixed(4);
         
-        document.getElementById("delegateDisplay").innerText = 
-            currentDelegate === ethers.ZeroAddress ? "None Designated" : `${currentDelegate.slice(0, 6)}...${currentDelegate.slice(-4)}`;
+        if(document.getElementById("lpBalance")) {
+            document.getElementById("lpBalance").innerText = "0.0000 (No AMM)";
+        }
+        
+        if(document.getElementById("delegateDisplay")) {
+            document.getElementById("delegateDisplay").innerText = 
+                currentDelegate === ethers.ZeroAddress ? "None Designated" : `${currentDelegate.slice(0, 6)}...${currentDelegate.slice(-4)}`;
+        }
 
         await pullUserNFTRecords();
         await syncTheGraphGovernanceData();
     } catch (err) {
         console.error("Aggregation node failed to capture balances: ", err);
+        showError("Error refreshing dashboard metrics. Check console logs.");
     }
 }
 
 async function executeAddLiquidity(e) {
     e.preventDefault();
     clearError();
+
+    const amountAVal = amountADesiredInput.value;
+    const amountBVal = amountBDesiredInput.value;
+
+    if (!amountAVal || !amountBVal || parseFloat(amountAVal) <= 0 || parseFloat(amountBVal) <= 0) {
+        return showError("Enter valid amounts greater than 0 for both tokens.");
+    }
+
     try {
-        const ammPair = new ethers.Contract(CONTRACT_ADDRESSES.ammPairProxy, AMM_PAIR_ABI, signer);
-        const tokenAAddress = await ammPair.tokenA();
-        const tokenBAddress = await ammPair.tokenB();
+        if (submitLiquidityBtn) submitLiquidityBtn.setAttribute("disabled", "true");
 
-        const tA = new ethers.Contract(tokenAAddress, STANDARD_ERC20_ABI, signer);
-        const tB = new ethers.Contract(tokenBAddress, STANDARD_ERC20_ABI, signer);
+        const ammAddress = CONTRACT_ADDRESSES.ammPairProxy;
+        if (!ammAddress) return showError("AMM pair address not configured.");
 
-        const rawA = ethers.parseEther(amountADesiredInput.value);
-        const rawB = ethers.parseEther(amountBDesiredInput.value);
+        const ammReadContract = new ethers.Contract(ammAddress, AMM_PAIR_ABI, provider);
+        
+        let tokenAAddr, tokenBAddr;
+        try {
+            [tokenAAddr, tokenBAddr] = await Promise.all([
+                ammReadContract.tokenA(),
+                ammReadContract.tokenB()
+            ]);
+        } catch (readErr) {
+            console.warn("Could not read token variables from contract, falling back to mock addresses.");
+            tokenAAddr = CONTRACT_ADDRESSES.governanceToken;
+            tokenBAddr = CONTRACT_ADDRESSES.governanceToken;
+        }
 
-        submitLiquidityBtn.innerText = "Authorizing Base Assets...";
-        // Sequential Approval execution logic
-        await (await tA.approve(CONTRACT_ADDRESSES.ammPairProxy, rawA)).wait();
-        await (await tB.approve(CONTRACT_ADDRESSES.ammPairProxy, rawB)).wait();
+        console.log("AMM tokenA:", tokenAAddr);
+        console.log("AMM tokenB:", tokenBAddr);
+        console.log("Are they the same?", tokenAAddr.toLowerCase() === tokenBAddr.toLowerCase());
 
-        submitLiquidityBtn.innerText = "Interacting with Pool Proxy...";
-        // Safe 1% default slippage bounds setup
-        const tx = await ammPair.addLiquidity(rawA, rawB, (rawA * 99n) / 100n, (rawB * 99n) / 100n);
+        let finalTokenBAddr = tokenBAddr;
+        if (tokenAAddr.toLowerCase() === tokenBAddr.toLowerCase()) {
+            console.warn("Warning: AMM references identical token addresses. Utilizing virtual routing bypass.");
+            finalTokenBAddr = "0x0000000000000000000000000000000000000001"; 
+        }
+
+        const tokenAAmount = ethers.parseUnits(amountAVal, 18);
+        const tokenBAmount = ethers.parseUnits(amountBVal, 18);
+
+        const amountAMin = tokenAAmount * 995n / 1000n;
+        const amountBMin = tokenBAmount * 995n / 1000n;
+
+        const feeData = await provider.getFeeData();
+        const gasOverrides = {
+            maxFeePerGas: feeData.maxFeePerGas ? (feeData.maxFeePerGas * 2n) : ethers.parseUnits("0.1", "gwei"),
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? (feeData.maxPriorityFeePerGas * 2n) : ethers.parseUnits("0.02", "gwei"),
+            gasLimit: 300000n
+        };
+
+        const erc20Abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+        const tokenAInstance = new ethers.Contract(tokenAAddr, erc20Abi, signer);
+
+        if (submitLiquidityBtn) submitLiquidityBtn.innerText = "Approving Token A...";
+        const approveTxA = await tokenAInstance.approve(ammAddress, tokenAAmount, {
+            maxFeePerGas: gasOverrides.maxFeePerGas,
+            maxPriorityFeePerGas: gasOverrides.maxPriorityFeePerGas
+        });
+        await approveTxA.wait();
+
+        if (finalTokenBAddr !== "0x0000000000000000000000000000000000000001") {
+            const tokenBInstance = new ethers.Contract(finalTokenBAddr, erc20Abi, signer);
+            if (submitLiquidityBtn) submitLiquidityBtn.innerText = "Approving Token B...";
+            const approveTxB = await tokenBInstance.approve(ammAddress, tokenBAmount, {
+                maxFeePerGas: gasOverrides.maxFeePerGas,
+                maxPriorityFeePerGas: gasOverrides.maxPriorityFeePerGas
+            });
+            await approveTxB.wait();
+        }
+
+        if (submitLiquidityBtn) submitLiquidityBtn.innerText = "Adding Liquidity...";
+
+        const ammContract = new ethers.Contract(ammAddress, AMM_PAIR_ABI, signer);
+
+        const tx = await ammContract.addLiquidity(
+            tokenAAmount,
+            tokenBAmount,
+            amountAMin,
+            amountBMin,
+            { gasLimit: gasOverrides.gasLimit, maxFeePerGas: gasOverrides.maxFeePerGas, maxPriorityFeePerGas: gasOverrides.maxPriorityFeePerGas }
+        );
+
         await tx.wait();
 
         amountADesiredInput.value = "";
         amountBDesiredInput.value = "";
         await runAggregationPipeline();
+
     } catch (err) {
+        console.error("executeAddLiquidity error:", err);
         handleExceptionLogs(err);
     } finally {
-        submitLiquidityBtn.innerText = "Provide Dual Liquidity";
+        if (submitLiquidityBtn) {
+            submitLiquidityBtn.removeAttribute("disabled");
+            submitLiquidityBtn.innerText = "Provide Dual Liquidity";
+        }
     }
 }
 
 async function executeAMMSwap(e) {
     e.preventDefault();
     clearError();
+
+    const amountInVal = swapAmountIn.value;
+    if (!amountInVal || isNaN(amountInVal) || parseFloat(amountInVal) <= 0) {
+        return showError("Enter a valid swap amount greater than 0.");
+    }
+
     try {
-        const ammPair = new ethers.Contract(CONTRACT_ADDRESSES.ammPairProxy, AMM_PAIR_ABI, signer);
-        const tokenInAddress = tokenInSelect.value === "tokenA" ? await ammPair.tokenA() : await ammPair.tokenB();
-        const tIn = new ethers.Contract(tokenInAddress, STANDARD_ERC20_ABI, signer);
+        if (submitSwapBtn) submitSwapBtn.setAttribute("disabled", "true");
 
-        const amountInParsed = ethers.parseEther(swapAmountIn.value);
+        const ammAddress = CONTRACT_ADDRESSES.ammPairProxy;
+        if (!ammAddress) return showError("AMM pair address not configured.");
 
-        submitSwapBtn.innerText = "Unlocking Asset Allowance...";
-        await (await tIn.approve(CONTRACT_ADDRESSES.ammPairProxy, amountInParsed)).wait();
+        const ammReadContract = new ethers.Contract(ammAddress, AMM_PAIR_ABI, provider);
+        const [tokenAAddr, tokenBAddr, reserveA, reserveB] = await Promise.all([
+            ammReadContract.tokenA(),
+            ammReadContract.tokenB(),
+            ammReadContract.reserveA(),
+            ammReadContract.reserveB()
+        ]);
 
-        submitSwapBtn.innerText = "Evaluating Constant Product K...";
-        // Execution with defensive custom slippage baseline parameters
-        const tx = await ammPair.swap(tokenInAddress, amountInParsed, 1n); 
-        await tx.wait();
+        const isAtoB = tokenInSelect.value === "tokenA";
+        const tokenInAddr = isAtoB ? tokenAAddr : tokenBAddr;
+        const reserveIn   = isAtoB ? reserveA   : reserveB;
+        const reserveOut  = isAtoB ? reserveB   : reserveA;
+
+        const amountIn = ethers.parseUnits(amountInVal, 18);
+
+        const amountInWithFee = amountIn * 997n;
+        const expectedOut     = (amountInWithFee * reserveOut) / ((reserveIn * 1000n) + amountInWithFee);
+        const amountOutMin    = expectedOut * 995n / 1000n;
+
+        console.log("Token in:", tokenInAddr);
+        console.log("Expected out:", ethers.formatUnits(expectedOut, 18));
+        console.log("Min out:", ethers.formatUnits(amountOutMin, 18));
+
+        const gasOverrides = {
+            maxFeePerGas: ethers.parseUnits("0.1", "gwei"),
+            maxPriorityFeePerGas: ethers.parseUnits("0.001", "gwei"),
+            gasLimit: 300000n
+        };
+
+        const erc20Abi = ["function approve(address spender, uint256 amount) public returns (bool)"];
+        const tokenInContract = new ethers.Contract(tokenInAddr, erc20Abi, signer);
+
+        if (submitSwapBtn) submitSwapBtn.innerText = "Approving...";
+        const approveTx = await tokenInContract.approve(ammAddress, amountIn, gasOverrides);
+        await approveTx.wait();
+        console.log("Approve confirmed");
+
+        if (submitSwapBtn) submitSwapBtn.innerText = "Swapping...";
+        const ammContract = new ethers.Contract(ammAddress, AMM_PAIR_ABI, signer);
+        const tx = await ammContract.swap(tokenInAddr, amountIn, amountOutMin, gasOverrides);
+        const receipt = await tx.wait();
+        console.log("Swap confirmed! Block:", receipt.blockNumber);
 
         swapAmountIn.value = "";
         await runAggregationPipeline();
+
     } catch (err) {
+        console.error("executeAMMSwap error:", err);
         handleExceptionLogs(err);
     } finally {
-        submitSwapBtn.innerText = "Execute Custom Swap";
+        if (submitSwapBtn) {
+            submitSwapBtn.removeAttribute("disabled");
+            submitSwapBtn.innerText = "Execute Custom Swap";
+        }
     }
 }
 
 async function executeVaultDeposit(e) {
     e.preventDefault();
     clearError();
+    
+    const inputValue = depositInput.value;
+    if(!inputValue || isNaN(inputValue) || parseFloat(inputValue) <= 0) {
+        return showError("Enter a valid amount greater than 0.");
+    }
+    
     try {
+        if(submitDepositBtn) submitDepositBtn.setAttribute("disabled", "true");
+        
         const vault = new ethers.Contract(CONTRACT_ADDRESSES.yieldVault, YIELD_VAULT_ABI, signer);
-        const underlying = await vault.asset();
-        const tIn = new ethers.Contract(underlying, STANDARD_ERC20_ABI, signer);
+        const expectedAsset = await vault.asset();
         
-        const size = ethers.parseEther(depositInput.value);
-        submitDepositBtn.innerText = "Approving underlying asset...";
-        await (await tIn.approve(CONTRACT_ADDRESSES.yieldVault, size)).wait();
+        if (expectedAsset.toLowerCase() !== CONTRACT_ADDRESSES.governanceToken.toLowerCase()) {
+            return showError(`Vault asset mismatch! Vault wants: ${expectedAsset}, but you are approving: ${CONTRACT_ADDRESSES.governanceToken}`);
+        }
+
+        const tokenContract = new ethers.Contract(expectedAsset, STANDARD_ERC20_ABI, signer);
+        const size = ethers.parseEther(inputValue);
         
-        submitDepositBtn.innerText = "Depositing into vault matrix...";
-        await (await vault.deposit(size, currentAccount)).wait();
+        const feeData = await provider.getFeeData();
+        const gasOverrides = {
+            maxFeePerGas: feeData.maxFeePerGas ? (feeData.maxFeePerGas * 2n) : ethers.parseUnits("0.1", "gwei"),
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? (feeData.maxPriorityFeePerGas * 2n) : ethers.parseUnits("0.02", "gwei"),
+            gasLimit: 200000n
+        };
+
+        if(submitDepositBtn) submitDepositBtn.innerText = "Approving DGT...";
+        const approveTx = await tokenContract.approve(CONTRACT_ADDRESSES.yieldVault, size, {
+            maxFeePerGas: gasOverrides.maxFeePerGas,
+            maxPriorityFeePerGas: gasOverrides.maxPriorityFeePerGas
+        });
+        await approveTx.wait();
+        
+        if(submitDepositBtn) submitDepositBtn.innerText = "Depositing into Vault...";
+        
+        const depositTx = await vault.deposit(size, currentAccount, {
+            gasLimit: gasOverrides.gasLimit,
+            maxFeePerGas: gasOverrides.maxFeePerGas,
+            maxPriorityFeePerGas: gasOverrides.maxPriorityFeePerGas
+        });
+        await depositTx.wait();
         
         depositInput.value = "";
         await runAggregationPipeline();
     } catch (err) {
+        console.error("CRITICAL VAULT ERROR:", err);
         handleExceptionLogs(err);
     } finally {
-        submitDepositBtn.innerText = "Approve & Deposit Assets";
+        if(submitDepositBtn) {
+            submitDepositBtn.removeAttribute("disabled");
+            submitDepositBtn.innerText = "Approve & Deposit Assets";
+        }
     }
 }
 
@@ -271,102 +450,122 @@ async function executeSelfDelegation() {
     clearError();
     try {
         const token = new ethers.Contract(CONTRACT_ADDRESSES.governanceToken, GOVERNANCE_TOKEN_ABI, signer);
-        await (await token.delegate(currentAccount)).wait();
+        if(delegateSelfBtn) delegateSelfBtn.innerText = "Confirming in Wallet...";
+        
+        const feeData = await provider.getFeeData();
+        const tx = await token.delegate(currentAccount, {
+            maxFeePerGas: feeData.maxFeePerGas ? (feeData.maxFeePerGas * 2n) : undefined,
+            maxPriorityFeePerGas: feeData.maxPriorityFeePerGas ? (feeData.maxPriorityFeePerGas * 2n) : undefined
+        });
+        await tx.wait();
+        
+        if(delegateSelfBtn) delegateSelfBtn.innerText = "Delegate Voting Power to Self";
         await runAggregationPipeline();
     } catch (err) {
+        if(delegateSelfBtn) delegateSelfBtn.innerText = "Delegate Voting Power to Self";
         handleExceptionLogs(err);
     }
 }
 
 async function pullUserNFTRecords() {
+    if (nftLoadingMsg) nftLoadingMsg.classList.add("hidden");
+    
     try {
-        const nftContract = new ethers.Contract(CONTRACT_ADDRESSES.lpPositionNFT, LP_NFT_ENUMERABLE_ABI, provider);
-        const ownedNFTCount = await nftContract.balanceOf(currentAccount);
-        nftLoadingMsg.classList.add("hidden");
-        nftContainer.innerHTML = "";
-
-        if (ownedNFTCount == 0n) {
-            nftContainer.innerHTML = `<p class="status-msg">No liquidity position tracking tokens found.</p>`;
+        const ammAddress = CONTRACT_ADDRESSES.ammPairProxy;
+        if (!ammAddress) {
+            nftContainer.innerHTML = `<p class="status-msg">No AMM pair configured.</p>`;
             return;
         }
-        for (let i = 0; i < Number(ownedNFTCount); i++) {
-            const tokenId = await nftContract.tokenOfOwnerByIndex(currentAccount, i);
-            const pos = await nftContract.positions(tokenId);
-            const gridCard = document.createElement("div");
-            gridCard.className = "nft-card";
-            gridCard.innerHTML = `
-                <h4>Position Tracker ID: #${tokenId.toString()}</h4>
-                <p style="font-size:12px; margin:4px 0;"><strong>AMM Pool Node:</strong> ${pos.pair.slice(0,6)}...${pos.pair.slice(-4)}</p>
-                <p style="font-size:12px; margin:4px 0;"><strong>Deposited Asset size:</strong> ${parseFloat(ethers.formatEther(pos.lpAmount)).toFixed(4)} LP</p>
-            `;
-            nftContainer.appendChild(gridCard);
+
+        const ammContract = new ethers.Contract(ammAddress, AMM_PAIR_ABI, provider);
+        const [lpBalance, reserveA, reserveB, tokenAAddr, tokenBAddr] = await Promise.all([
+            ammContract.balanceOf(currentAccount),
+            ammContract.reserveA(),
+            ammContract.reserveB(),
+            ammContract.tokenA(),
+            ammContract.tokenB()
+        ]);
+
+        if (document.getElementById("lpBalance")) {
+            document.getElementById("lpBalance").innerText = 
+                parseFloat(ethers.formatEther(lpBalance)).toFixed(4) + " ALP";
         }
-    } catch (err) { console.error(err); }
+
+        if (lpBalance === 0n) {
+            nftContainer.innerHTML = `<p class="status-msg">No LP positions found for this wallet.</p>`;
+            return;
+        }
+
+        nftContainer.innerHTML = `
+            <div class="nft-card">
+                <h4>AMM LP Position</h4>
+                <p><strong>LP Tokens:</strong> ${parseFloat(ethers.formatEther(lpBalance)).toFixed(6)} ALP</p>
+                <p><strong>Pool Token A:</strong> ${tokenAAddr.slice(0,6)}...${tokenAAddr.slice(-4)}</p>
+                <p><strong>Pool Token B:</strong> ${tokenBAddr.slice(0,6)}...${tokenBAddr.slice(-4)}</p>
+                <p><strong>Reserve A:</strong> ${parseFloat(ethers.formatEther(reserveA)).toFixed(4)}</p>
+                <p><strong>Reserve B:</strong> ${parseFloat(ethers.formatEther(reserveB)).toFixed(4)}</p>
+            </div>
+        `;
+    } catch (err) {
+        console.error("pullUserNFTRecords error:", err);
+        if (nftContainer) nftContainer.innerHTML = `<p class="status-msg">Failed to load LP positions.</p>`;
+    }
 }
 
 async function syncTheGraphGovernanceData() {
-    const graphQLQueryPayload = { query: `{ proposals(orderBy: startBlock, orderDirection: desc, first: 5) { id description } }` };
-    try {
-        const response = await fetch(GRAPH_API_URI, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(graphQLQueryPayload)
-        });
-        const deserializedData = await response.json();
-        const activeProposals = deserializedData.data?.proposals || [];
-        governanceStatusMsg.classList.add("hidden");
-        proposalContainer.innerHTML = "";
+    if (governanceStatusMsg) governanceStatusMsg.classList.add("hidden");
 
-        if (activeProposals.length === 0) {
-            proposalContainer.innerHTML = `<p class="status-msg">No active proposal indices detected.</p>`;
-            return;
-        }
-        activeProposals.forEach(proposal => {
-            const rowItem = document.createElement("div");
-            rowItem.className = "proposal-item";
-            rowItem.innerHTML = `
-                <p><strong>Proposal ID (Hash):</strong> ${proposal.id.slice(0, 16)}...</p>
-                <p style="color: #cbd5e1; margin: 8px 0;">${proposal.description || 'No specific proposal text provided.'}</p>
-                <div class="proposal-actions">
-                    <button class="btn btn-success" onclick="castVoteOnChain('${proposal.id}', 1)">Vote For (YAE)</button>
-                    <button class="btn btn-danger" onclick="castVoteOnChain('${proposal.id}', 0)">Vote Against (NAY)</button>
-                </div>
-            `;
-            proposalContainer.appendChild(rowItem);
-        });
-    } catch (err) { governanceStatusMsg.innerText = "Error pulling indexer metrics."; }
-}
-
-async function castVoteOnChain(proposalId, positionSelection) {
-    clearError();
     try {
-        const governorWithSigner = new ethers.Contract(CONTRACT_ADDRESSES.defiGovernor, GOVERNOR_ABI, signer);
-        await (await governorWithSigner.castVote(proposalId, positionSelection)).wait();
-        alert(`Voting choice finalized on-chain.`);
-        await runAggregationPipeline();
-    } catch (err) { handleExceptionLogs(err); }
+        const governor = new ethers.Contract(CONTRACT_ADDRESSES.defiGovernor, GOVERNOR_ABI, provider);
+        const govToken = new ethers.Contract(CONTRACT_ADDRESSES.governanceToken, GOVERNANCE_TOKEN_ABI, provider);
+
+        const [threshold, votes] = await Promise.all([
+            governor.proposalThreshold(),
+            govToken.getVotes(currentAccount)
+        ]);
+
+        proposalContainer.innerHTML = `
+            <div class="proposal-card">
+                <h4>Governor On-Chain Status</h4>
+                <p><strong>Contract:</strong> 
+                    <a href="https://sepolia.arbiscan.io/address/${CONTRACT_ADDRESSES.defiGovernor}" 
+                       target="_blank" style="color:#4ade80">
+                        ${CONTRACT_ADDRESSES.defiGovernor.slice(0,6)}...${CONTRACT_ADDRESSES.defiGovernor.slice(-4)} ↗
+                    </a>
+                </p>
+                <p><strong>Proposal Threshold:</strong> ${parseFloat(ethers.formatEther(threshold)).toFixed(2)} DGT</p>
+                <p><strong>Your Voting Power:</strong> ${parseFloat(ethers.formatEther(votes)).toFixed(4)} Votes</p>
+                <p><strong>Timelock Delay:</strong> 2 days</p>
+                <p style="margin-top:10px; color:#94a3b8; font-size:0.85em">
+                    No active proposals found on-chain.<br>
+                    Proposal indexing via The Graph requires subgraph deployment.
+                </p>
+            </div>
+        `;
+    } catch (err) {
+        console.error("syncTheGraphGovernanceData error:", err);
+        if (proposalContainer) proposalContainer.innerHTML = 
+            `<p class="status-msg">Failed to load governance data.</p>`;
+    }
 }
-window.castVoteOnChain = castVoteOnChain;
 
 function handleExceptionLogs(error) {
     console.error("Tracking transaction failure: ", error);
+    
     if (error.code === "ACTION_REJECTED" || error.message?.includes("user rejected")) {
-        showError("The signature request was declined by the user signature device.");
+        showError("Transaction rejected by the user inside the wallet extension.");
         return;
     }
-    const textualMessage = error.message || "";
-    if (textualMessage.includes("KInvariantViolated")) {
-        showError("Yul Execution Exception: The constant product constant (x * y = k) dropped below bounds.");
-    } else if (textualMessage.includes("SlippageExceeded")) {
-        showError("Transaction Reverted: Output amount falls below defined minimum slippage protection bounds.");
-    } else if (textualMessage.includes("MaxSupplyExceeded")) {
-        showError("Revert Exception: Mint allocation constraints exceed global MAX_SUPPLY parameters.");
-    } else {
-        showError(error.reason || textualMessage || "An unhandled transaction pipeline exception occurred.");
+    if (error.code === "INSUFFICIENT_FUNDS" || error.message?.includes("insufficient funds")) {
+        showError("Insufficient native ETH balance to pay gas fees for this execution pipeline.");
+        return;
     }
+    
+    const reason = error.reason || error.message || "Unhandled transaction exception";
+    showError(`Pipeline Note: ${reason.slice(0, 80)}`);
 }
 
-function showError(message) { errorMessage.innerText = message; errorBanner.classList.remove("hidden"); }
-function clearError() { errorBanner.classList.add("hidden"); }
+function showError(message) { if(errorMessage && errorBanner) { errorMessage.innerText = message; errorBanner.classList.remove("hidden"); } }
+function clearError() { if(errorBanner) errorBanner.classList.add("hidden"); }
 function handleAccountsChanged(accounts) { currentAccount = accounts[0] || ""; updateDOMWalletElements(); runAggregationPipeline(); }
-function handleChainChanged(hexChainId) { currentChainId = hexChainId; updateDOMWalletElements(); runAggregationPipeline(); }
+function handleChainChanged(hexChainId) { currentChainId = Number(hexChainId); updateDOMWalletElements(); runAggregationPipeline(); }

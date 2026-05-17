@@ -13,12 +13,12 @@ import {IPriceFeed} from "./interfaces/IPriceFeed.sol";
 contract LendingProtocol is ReentrancyGuard, Ownable {
     using SafeERC20 for IERC20;
 
-    IERC20 public immutable collateralToken; // Акции вашего YieldVault (ERC-4626)
-    IERC20 public immutable borrowToken;     // Второй актив в паре (например, TokenB)
-    IPriceFeed public immutable priceFeed;   // Оракул Chainlink ETH/USD на Arbitrum Sepolia
+    IERC20 public immutable collateralToken;
+    IERC20 public immutable borrowToken;
+    IPriceFeed public immutable priceFeed;
 
-    uint256 public constant LTV = 75; // Loan-to-Value: 75% max borrow
-    uint256 public constant PRICE_STALENESS_THRESHOLD = 3600; // 1 час свежести данных
+    uint256 public constant LTV = 75;
+    uint256 public constant PRICE_STALENESS_THRESHOLD = 3600;
 
     struct UserPosition {
         uint256 collateralAmount;
@@ -56,7 +56,6 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
     function depositCollateral(uint256 _amount) external nonReentrant {
         if (_amount == 0) revert InvalidPrice();
 
-        // Checks-Effects-Interactions
         positions[msg.sender].collateralAmount += _amount;
 
         emit CollateralDeposited(msg.sender, _amount);
@@ -69,14 +68,12 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
         UserPosition storage position = positions[msg.sender];
 
         uint256 assetPrice = getLatestPrice();
-        // Рассчитываем ценность обеспечения пользователя
         uint256 collateralValue = (position.collateralAmount * assetPrice) / 10**8;
         uint256 maxBorrowAllowed = (collateralValue * LTV) / 100;
 
         if (position.borrowedAmount + _borrowAmount > maxBorrowAllowed) revert OverBorrowLimit();
         if (borrowToken.balanceOf(address(this)) < _borrowAmount) revert InsufficientProtocolLiquidity();
 
-        // Checks-Effects-Interactions
         position.borrowedAmount += _borrowAmount;
 
         emit AssetBorrowed(msg.sender, _borrowAmount);
@@ -88,7 +85,6 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
         UserPosition storage position = positions[msg.sender];
         if (_repayAmount > position.borrowedAmount) revert RepayAmountOverflow();
 
-        // Checks-Effects-Interactions
         position.borrowedAmount -= _repayAmount;
 
         emit AssetRepaid(msg.sender, _repayAmount);
@@ -106,7 +102,6 @@ contract LendingProtocol is ReentrancyGuard, Ownable {
 
         if (position.borrowedAmount > maxBorrowAllowed) revert OverBorrowLimit();
 
-        // Checks-Effects-Interactions
         position.collateralAmount -= _amount;
 
         emit CollateralWithdrawn(msg.sender, _amount);

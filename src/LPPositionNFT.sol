@@ -80,7 +80,6 @@ contract LPPositionNFT is ERC721Enumerable, AccessControl {
         _baseTokenURI = uri;
     }
 
-    // Required overrides
 
     function supportsInterface(
         bytes4 interfaceId

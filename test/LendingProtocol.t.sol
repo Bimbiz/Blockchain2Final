@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {Test} from "forge-std/Test.sol";
-import {console} from "forge-std/console.sol";
-import {LendingProtocol} from "../src/LendingProtocol.sol";
-import {YieldVault} from "../src/YieldVault.sol";
-import {MockERC20} from "./helpers/MockERC20.sol";
-import {MockAggregator} from "../src/mocks/MockAggregator.sol";
+import { Test } from "forge-std/Test.sol";
+import { console } from "forge-std/console.sol";
+import { LendingProtocol } from "../src/LendingProtocol.sol";
+import { YieldVault } from "../src/YieldVault.sol";
+import { MockERC20 } from "./helpers/MockERC20.sol";
+import { MockAggregator } from "../src/mocks/MockAggregator.sol";
 
 contract LendingProtocolTest is Test {
     LendingProtocol public lending;
@@ -19,7 +19,7 @@ contract LendingProtocolTest is Test {
     address public liquidator = address(0x3333);
 
     uint8 public constant DECIMALS = 8;
-    int256 public constant INITIAL_PRICE = 2000 * 10**8; // $2000 за ETH
+    int256 public constant INITIAL_PRICE = 2000 * 10 ** 8; // $2000 за ETH
 
     // Объявляем кастомные ошибки из твоего LendingProtocol, чтобы Foundry их распознавал
     error InsufficientProtocolLiquidity();
@@ -31,25 +31,15 @@ contract LendingProtocolTest is Test {
 
         // 1. Деплоим mock-токен с передачей Имени и Символа
         govToken = new MockERC20("Governance Token", "GOV");
-        
+
         // 2. Деплоим mock-оракул (с правильным порядком аргументов)
         priceFeed = new MockAggregator(INITIAL_PRICE, DECIMALS);
 
         // 3. Деплоим YieldVault
-        vault = new YieldVault(
-            govToken,
-            owner,
-            address(priceFeed),
-            3600,
-            100 * 10**8
-        );
+        vault = new YieldVault(govToken, owner, address(priceFeed), 3600, 100 * 10 ** 8);
 
         // 4. Деплоим LendingProtocol
-        lending = new LendingProtocol(
-            address(vault),
-            address(govToken),
-            address(priceFeed)
-        );
+        lending = new LendingProtocol(address(vault), address(govToken), address(priceFeed));
 
         vm.stopPrank();
 
@@ -101,7 +91,7 @@ contract LendingProtocolTest is Test {
         vm.startPrank(user);
         lending.depositCollateral(depositAmount);
         vm.stopPrank();
-        
+
         govToken.mint(address(lending), 1000 ether);
 
         vm.startPrank(user);
@@ -118,7 +108,7 @@ contract LendingProtocolTest is Test {
 
         vm.startPrank(user);
         lending.depositCollateral(depositAmount);
-        
+
         // Исправлено: ожидаем кастомную ошибку протокола
         vm.expectRevert(InsufficientProtocolLiquidity.selector);
         lending.borrow(dangerousBorrowAmount);
@@ -149,7 +139,7 @@ contract LendingProtocolTest is Test {
 
         vm.startPrank(user);
         lending.depositCollateral(depositAmount);
-        
+
         uint256 walletVaultBefore = vault.balanceOf(user);
         lending.withdrawCollateral(depositAmount);
         vm.stopPrank();

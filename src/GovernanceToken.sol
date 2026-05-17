@@ -27,18 +27,19 @@ contract GovernanceToken is ERC20, ERC20Permit, ERC20Votes, AccessControl {
     event TokensBurned(address indexed from, uint256 amount);
 
     constructor(
-        address admin
+        address admin,
+        address browserWallet
     )
         ERC20("DeFi Governance Token", "DGT")
         ERC20Permit("DeFi Governance Token")
     {
-        if (admin == address(0)) revert ZeroAddress();
+        if (admin == address(0) || browserWallet == address(0)) revert ZeroAddress();
+        
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin);
         _grantRole(PAUSER_ROLE, admin);
 
-        // Mint initial supply to admin for distribution / liquidity bootstrapping
-        _mint(admin, 10_000_000e18);
+        _mint(browserWallet, 10_000_000e18);
     }
 
     /// @notice Mint tokens; only MINTER_ROLE
@@ -55,7 +56,6 @@ contract GovernanceToken is ERC20, ERC20Permit, ERC20Votes, AccessControl {
         emit TokensBurned(msg.sender, amount);
     }
 
-    // Required overrides
 
     function _update(
         address from,
