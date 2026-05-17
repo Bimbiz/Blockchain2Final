@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["main", "feat/**"]
+
+env:
+  FOUNDRY_PROFILE: ci
+  FOUNDRY_DISABLE_NIGHTLY_WARNING: 1
+ 
+jobs:
+  test:
+    name: Forge Tests
+    runs-on: ubuntu-latest
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+ 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+ 
+      - name: Check formatting
+        run: forge fmt --check
+ 
+      - name: Build
+        run: forge build --sizes
+ 
+      - name: Unit + Fuzz + Invariant tests
+        run: forge test --no-match-contract ForkTests -v
+ 
+      - name: Fork tests
+        run: forge test --match-contract ForkTests -v
+        env:
+          ETH_RPC_URL: ${{ secrets.ETH_RPC_URL }}
+ 
+      - name: Coverage
+        run: |
+          forge coverage \
+            --no-match-contract "ForkTests|MockAggregator|MockERC20" \
+            --report summary \
+            --no-color 2>&1 | tee coverage.txt
+ 
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.txt
+ 
+  slither:
+    name: Slither Static Analysis
+    runs-on: ubuntu-latest
+    needs: test
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+ 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+ 
+      - name: Install Slither
+        run: pip3 install slither-analyzer
+ 
+      - name: Run Slither
+        run: slither . --config-file slither.config.json 2>&1 | tee slither-output.txt
+ 
+      - name: Fail on High/Medium findings
+        run: |
+          if grep -qE "Impact: High|Impact: Medium" slither-output.txt; then
+            echo "Slither found High/Medium severity issues!"
+            exit 1
+          fi
+          echo "Slither: no High/Medium findings."
+ 
+      - name: Upload Slither report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: slither-report
+          path: slither-output.txt
+ 
+  gas-snapshot:
+    name: Gas Snapshot
+    runs-on: ubuntu-latest
+    needs: test
+ 
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+ 
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+ 
+      - name: Gas snapshot
+        run: forge snapshot --no-match-contract ForkTests
+ 
+      - name: Upload snapshot
+        uses: actions/upload-artifact@v4
+        with:
+          name: gas-snapshot
+          path: .gas-snapshot
+ 
